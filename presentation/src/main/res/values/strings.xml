@@ -1,0 +1,54 @@
+<resources>
+    <!-- Common -->
+    <string name="app_name">SNS</string>
+
+    <string name="start">시작하기</string>
+    <string name="login">로그인</string>
+    <string name="sign_up">회원가입</string>
+    <string name="sign_out">로그아웃</string>
+    <string name="feed">피드</string>
+    <string name="profile">마이 프로필</string>
+    <string name="edit_username">닉네임 수정</string>
+    <string name="cancel">취소</string>
+    <string name="confirm">확인</string>
+    <string name="new_post">새 게시물</string>
+    <string name="next">다음</string>
+    <string name="posting">게시</string>
+    <string name="option">옵션</string>
+    <string name="delete">삭제하기</string>
+    <string name="title_delete">삭제</string>
+    <string name="comment">댓글</string>
+    <string name="show_more">더 보기</string>
+    <string name="show_less">간략히 보기</string>
+    <string name="retry">재시도</string>
+    <string name="settings">설정</string>
+    <string name="light_mode">밝은 모드</string>
+    <string name="dark_mode">어두운 모드</string>
+
+    <string name="id">아이디</string>
+    <string name="username">닉네임</string>
+    <string name="password">비밀번호</string>
+    <string name="password_confirm">비밀번호 확인</string>
+
+    <!-- Labels -->
+    <string name="label_no_account">계정이 없으신가요?</string>
+    <string name="label_input_id">아이디를 입력해주세요</string>
+    <string name="label_input_username">닉네임을 입력해주세요</string>
+    <string name="label_input_password">비밀번호를 입력해주세요</string>
+    <string name="label_input_password_confirm">비밀번호를 다시 입력해주세요</string>
+    <string name="label_sign_out_confirm">로그아웃 하시겠습니까?</string>
+    <string name="label_no_selected_image">선택된 이미지가 없습니다</string>
+    <string name="label_hint_add_text">문구 추가…</string>
+    <string name="label_delete_post">게시물을 삭제하시겠습니까?</string>
+    <string name="label_delete_comment">댓글을 삭제하시겠습니까?</string>
+    <string name="label_no_comment">작성된 댓글이 없습니다</string>
+    <string name="label_error_network_unavailable">네트워크가 원활하지 않습니다</string>
+    <string name="label_error_check_network_and_retry">네트워크 연결상태를 확인하거나\n잠시 후 다시 시도해주세요</string>
+    <string name="label_empty_feed">피드가 비었습니다</string>
+
+    <!-- Error Messages -->
+    <string name="error_field_empty">필수 입력 항목입니다</string>
+    <string name="error_invalid_credentials">계정 정보와 비밀번호가 일치하지 않습니다. 다시 시도해주세요.</string>
+    <string name="error_password_mismatch">비밀번호가 일치하지 않습니다</string>
+    <string name="error_password_too_short">비밀번호는 최소 8자 이상이어야 합니다</string>
+</resources>
