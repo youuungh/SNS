@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.usecase.UserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.withTimeout
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
@@ -28,8 +29,8 @@ class ProfileViewModel @Inject constructor(
             is ApiResult.Success -> {
                 reduce {
                     state.copy(
-                        profileImageUrl = result.data.profileImageUrl,
-                        username = result.data.username,
+                        profileImageUrl = result.data.profileImagePath,
+                        username = result.data.userName,
                         isLoading = false
                     )
                 }
@@ -58,7 +59,7 @@ class ProfileViewModel @Inject constructor(
     fun onUsernameChange(username: String) = intent {
         reduce { state.copy(isLoading = true) }
 
-        when (val result = userUseCase.setMyUser(username = username, profileImageUrl = null)) {
+        when (val result = userUseCase.setMyUser(userName = username, profileImagePath = null)) {
             is ApiResult.Success -> load()
             is ApiResult.Error -> {
                 reduce { state.copy(isLoading = false) }

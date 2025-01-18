@@ -20,7 +20,7 @@ fun Post.toModel(): PostModel {
     return PostModel(
         userId = this.userId,
         postId = this.id,
-        username = this.username,
+        username = this.userName,
         profileImageUrl = this.profileImageUrl,
         images = this.images,
         richTextState = RichTextState().apply { setHtml(this@toModel.content) },

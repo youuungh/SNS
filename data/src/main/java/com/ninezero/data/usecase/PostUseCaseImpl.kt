@@ -9,8 +9,8 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.ninezero.data.model.ImageParcel
-import com.ninezero.data.model.PostParcel
+import com.ninezero.data.model.parcel.ImageParcel
+import com.ninezero.data.model.parcel.PostParcel
 import com.ninezero.data.worker.PostWorker
 import com.ninezero.domain.model.Image
 import com.ninezero.domain.usecase.PostUseCase

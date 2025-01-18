@@ -85,22 +85,17 @@ class SignUpViewModel @Inject constructor(
 
         when (val result = userUseCase.signUp(
             id = state.id,
-            username = state.username,
+            userName = state.username,
             password = state.password
         )) {
             is ApiResult.Success -> {
                 Timber.d("SignUp Success: ${result.data}")
                 reduce { state.copy(isLoading = false) }
-                postSideEffect(SignUpSideEffect.NavigateToLogin)
                 postSideEffect(SignUpSideEffect.ShowSnackbar(message = "회원가입에 성공했습니다"))
-            }
-            is ApiResult.Error.InvalidRequest -> {
-                Timber.e("SignUp Invalid Request: ${result.message}")
-                reduce { state.copy(isLoading = false) }
-                postSideEffect(SignUpSideEffect.ShowSnackbar(result.message))
+                postSideEffect(SignUpSideEffect.NavigateToLogin)
             }
             is ApiResult.Error -> {
-                Timber.e("SignUp Other Error: ${result.message}")
+                Timber.e("SignUp Error: ${result.message}")
                 reduce { state.copy(isLoading = false) }
                 postSideEffect(SignUpSideEffect.ShowSnackbar(result.message))
             }

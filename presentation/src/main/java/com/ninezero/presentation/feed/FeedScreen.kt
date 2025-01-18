@@ -1,9 +1,12 @@
 package com.ninezero.presentation.feed
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
@@ -11,21 +14,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.ninezero.presentation.component.DeleteCommentDialog
 import com.ninezero.presentation.component.DeletePostDialog
 import com.ninezero.presentation.component.EmptyFeedScreen
+import com.ninezero.presentation.component.ErrorDialog
 import com.ninezero.presentation.component.LoadingProgress
-import com.ninezero.presentation.component.LoadingScreen
 import com.ninezero.presentation.component.NetworkErrorScreen
-import com.ninezero.presentation.component.NewPostBanner
 import com.ninezero.presentation.component.PostCard
 import com.ninezero.presentation.component.PullToRefreshLayout
 import com.ninezero.presentation.component.SNSSurface
+import com.ninezero.presentation.component.ScrollToTopButton
+import com.ninezero.presentation.component.ShimmerPostCards
 import com.ninezero.presentation.component.bottomsheet.CommentsBottomSheet
 import com.ninezero.presentation.component.bottomsheet.OptionsBottomSheet
-import com.ninezero.presentation.model.feed.PostModel
+import com.ninezero.presentation.util.isEmpty
+import com.ninezero.presentation.util.isError
+import com.ninezero.presentation.util.isLoading
+import com.ninezero.presentation.util.isNotEmpty
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
@@ -33,49 +39,91 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 @Composable
 fun FeedScreen(
     snackbarHostState: SnackbarHostState,
-    viewModel: FeedViewModel = hiltViewModel()
+    viewModel: FeedViewModel = hiltViewModel(),
+    onNavigateToLogin: () -> Unit,
 ) {
     val state = viewModel.collectAsState().value
+    val posts = state.posts.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val posts = state.posts.collectAsLazyPagingItems()
-    val showNewPost by viewModel.showNewPost.collectAsState()
+
+    var isInit by remember { mutableStateOf(true ) }
+
+    LaunchedEffect(posts.loadState.refresh) {
+        if (posts.loadState.refresh is LoadState.NotLoading) {
+            isInit = false
+        }
+    }
 
     viewModel.collectSideEffect { sideEffect ->
         when (sideEffect) {
             is FeedSideEffect.ShowSnackbar -> scope.launch {
                 snackbarHostState.showSnackbar(sideEffect.message)
             }
+            FeedSideEffect.NavigateToLogin -> onNavigateToLogin()
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (state.hasError) {
-            NetworkErrorScreen(onRetry = { viewModel.refresh() })
-        } else {
-            FeedContent(
-                state = state,
-                posts = posts,
-                listState = listState,
-                isLoading = state.isLoading,
-                onRefresh = { viewModel.refresh() },
-                onLoadStateChange = { viewModel.updateLoadState(it) },
-                onOptionClick = { viewModel.showOptionsSheet(it) },
-                onCommentClick = { viewModel.showCommentsSheet(it) },
-                onScrollToTop = { viewModel.onNewPostBannerClick() }
-            )
-        }
+    SNSSurface {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                isInit && posts.isLoading() -> repeat(3) { ShimmerPostCards() }
+                posts.isEmpty() -> EmptyFeedScreen()
+                posts.isError() -> NetworkErrorScreen(
+                    onRetry = {
+                        isInit = true
+                        posts.refresh()
+                    }
+                )
+                else -> {
+                    PullToRefreshLayout(
+                        refreshing = state.isRefresh,
+                        onRefresh = { viewModel.refresh() }
+                    ) {
+                        AnimatedVisibility(
+                            visible = posts.isNotEmpty(),
+                            enter = fadeIn(animationSpec = tween(100)),
+                            exit = fadeOut(animationSpec = tween(100))
+                        ) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(
+                                    count = posts.itemCount,
+                                    key = { posts[it]?.postId ?: it }
+                                ) { index ->
+                                    posts[index]?.let { post ->
+                                        if (!state.deletedPostIds.contains(post.postId)) {
+                                            PostCard(
+                                                postId = post.postId,
+                                                username = post.username,
+                                                profileImageUrl = post.profileImageUrl,
+                                                images = post.images,
+                                                richTextState = post.richTextState,
+                                                comments = viewModel.getCombinedComments(post),
+                                                isOwner = post.userId == state.myUserId,
+                                                onOptionClick = { viewModel.showOptionsSheet(post) },
+                                                onCommentClick = { viewModel.showCommentsSheet(post) }
+                                            )
+                                        }
+                                    }
+                                }
 
-        NewPostBanner(
-            visible = showNewPost,
-            onClick = {
-                scope.launch {
-                    viewModel.onNewPostBannerClick()
-                    listState.animateScrollToItem(0)
+                                if (posts.loadState.append is LoadState.Loading) {
+                                    item { LoadingProgress() }
+                                }
+                            }
+                        }
+                    }
+
+                    ScrollToTopButton(
+                        listState = listState,
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                    )
                 }
-            },
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+            }
+        }
     }
 
     when (state.currentDialog) {
@@ -89,6 +137,7 @@ fun FeedScreen(
                 }
             )
         }
+
         is FeedDialog.DeleteComment -> {
             DeleteCommentDialog(
                 openDialog = true,
@@ -102,6 +151,14 @@ fun FeedScreen(
                 }
             )
         }
+
+        is FeedDialog.Error -> {
+            ErrorDialog(
+                message = state.currentDialog.message,
+                onDismiss = { viewModel.hideDialog() }
+            )
+        }
+
         FeedDialog.Hidden -> Unit
     }
 
@@ -128,116 +185,5 @@ fun FeedScreen(
             },
             onCommentSend = { text -> viewModel.onCommentSend(post.postId, text) }
         )
-    }
-}
-
-@Composable
-private fun FeedContent(
-    state: FeedState,
-    listState: LazyListState,
-    posts: LazyPagingItems<PostModel>,
-    isLoading: Boolean,
-    onRefresh: () -> Unit,
-    onLoadStateChange: (LoadState) -> Unit,
-    onOptionClick: (PostModel) -> Unit,
-    onCommentClick: (PostModel) -> Unit,
-    onScrollToTop: () -> Unit = {}
-) {
-    var hadItems by remember { mutableStateOf(false) }
-    var isReloading by remember { mutableStateOf(false) }
-    var enableScrollDetection by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isLoading, posts.itemCount) {
-        when {
-            isLoading -> {
-                hadItems = false
-                isReloading = true
-                enableScrollDetection = false
-            }
-            isReloading && posts.itemCount > 0 -> {
-                hadItems = true
-                isReloading = false
-                enableScrollDetection = true
-            }
-        }
-    }
-
-    LaunchedEffect(enableScrollDetection) {
-        if (!enableScrollDetection) return@LaunchedEffect
-
-        var wasAtTop = true
-        snapshotFlow {
-            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-        }.collect { isAtTop ->
-            if (!wasAtTop && isAtTop) {
-                onScrollToTop()
-            }
-            wasAtTop = isAtTop
-        }
-    }
-
-    LaunchedEffect(posts.loadState) {
-        onLoadStateChange(posts.loadState.refresh)
-    }
-
-    SNSSurface {
-        when {
-            posts.loadState.refresh is LoadState.Loading && !hadItems -> {
-                LoadingScreen(onDismissRequest = {})
-            }
-            posts.itemCount == 0 && posts.loadState.append.endOfPaginationReached -> {
-                EmptyFeedScreen()
-            }
-            else -> {
-                PullToRefreshLayout(
-                    refreshing = state.isRefreshing,
-                    onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(
-                            count = posts.itemCount,
-                            key = { posts[it]?.postId ?: it }
-                        ) {
-                            posts[it]?.let { post ->
-                                if (!state.deletedPostIds.contains(post.postId)) {
-                                    val combinedComments = remember(
-                                        post.postId,
-                                        state.addedComments[post.postId],
-                                        state.deletedComments[post.postId]
-                                    ) {
-                                        val initialComments = post.comments.toMutableList()
-                                        val addedComments = state.addedComments[post.postId].orEmpty()
-                                        val deletedCommentIds = state.deletedComments[post.postId]?.map { it.id }?.toSet() ?: emptySet()
-
-                                        (initialComments + addedComments).distinctBy { it.id }
-                                            .filterNot { deletedCommentIds.contains(it.id) }
-                                    }
-
-                                    PostCard(
-                                        postId = post.postId,
-                                        username = post.username,
-                                        profileImageUrl = post.profileImageUrl,
-                                        images = post.images,
-                                        richTextState = post.richTextState,
-                                        comments = combinedComments,
-                                        isOwner = post.userId == state.myUserId,
-                                        onOptionClick = { onOptionClick(post) },
-                                        onCommentClick = { onCommentClick(post) }
-                                    )
-                                }
-                            }
-                        }
-
-                        if (posts.loadState.append is LoadState.Loading) {
-                            item { LoadingProgress() }
-                        }
-                    }
-                }
-            }
-        }
     }
 }

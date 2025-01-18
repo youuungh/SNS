@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.ninezero.presentation.theme.SNSTheme
 
 @Composable
@@ -64,7 +67,10 @@ fun DetailScaffold(
                     },
                     navigationIcon = {
                         if (showBackButton) {
-                            IconButton(onClick = onBackClick) {
+                            IconButton(
+                                onClick = onBackClick,
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
@@ -73,7 +79,11 @@ fun DetailScaffold(
                             }
                         }
                     },
-                    actions = { actions() },
+                    actions = {
+                        Row(modifier = Modifier.padding(end = 8.dp)) {
+                            actions()
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent
                     )
@@ -98,13 +108,13 @@ fun DetailScaffold(
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }
+
+            LoadingDialog(
+                isLoading = isLoading,
+                onDismissRequest = {}
+            )
         }
     }
-
-    LoadingDialog(
-        isLoading = isLoading,
-        onDismissRequest = {}
-    )
 }
 
 @Composable

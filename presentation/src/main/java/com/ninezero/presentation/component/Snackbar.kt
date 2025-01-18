@@ -47,7 +47,7 @@ fun SNSSnackbar(
                     if (it.visuals.actionLabel != null) {
                         Modifier.padding(start = 16.dp, end = 8.dp)
                     } else {
-                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     }
                 )
         ) {
@@ -104,7 +104,7 @@ private fun SNSSnackbarPreview() {
                     .wrapContentSize()
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.5f))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
                     text = "기본 메시지입니다",

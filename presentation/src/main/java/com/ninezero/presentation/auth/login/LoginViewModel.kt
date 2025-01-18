@@ -55,7 +55,7 @@ class LoginViewModel @Inject constructor(
                 }
             }
             is ApiResult.Error -> {
-                Timber.e("Login Other Error: ${result.message}")
+                Timber.e("Login Error: ${result.message}")
                 reduce { state.copy(isLoading = false) }
                 postSideEffect(LoginSideEffect.ShowSnackbar(result.message))
             }

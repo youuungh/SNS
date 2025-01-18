@@ -1,6 +1,10 @@
 package com.ninezero.presentation.component
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,8 +15,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +42,44 @@ import com.ninezero.presentation.theme.snsProgressDark
 import com.ninezero.presentation.theme.snsProgressDarkBackground
 import com.ninezero.presentation.theme.snsProgressLight
 import com.ninezero.presentation.theme.snsProgressLightBackground
+
+@Composable
+fun TopFAB(
+    visible: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = LocalTheme.current
+
+    val containerColor = if (isDarkTheme) {
+        Color.White.copy(alpha = 0.6f)
+    } else {
+        Color.Black.copy(alpha = 0.3f)
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300)),
+        exit = fadeOut(animationSpec = tween(300)),
+        modifier = modifier.padding(16.dp)
+    ) {
+        SmallFloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            containerColor = containerColor,
+            elevation = FloatingActionButtonDefaults.loweredElevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.surface
+            )
+        }
+    }
+}
 
 @Composable
 fun LoadingScreen(
@@ -176,6 +224,18 @@ private fun LoadingScreenPreview() {
         ) {
             LoadingScreen(onDismissRequest = {})
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = false, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun TopFABPreview() {
+    SNSTheme {
+        TopFAB(
+            visible = true,
+            onClick = {}
+        )
     }
 }
 

@@ -3,12 +3,12 @@ package com.ninezero.presentation.feed
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.model.Comment
+import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
 import com.ninezero.presentation.model.feed.PostModel
@@ -16,11 +16,10 @@ import com.ninezero.presentation.model.feed.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
@@ -29,37 +28,40 @@ import javax.inject.Inject
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val userUseCase: UserUseCase,
-    private val feedUseCase: FeedUseCase
+    private val feedUseCase: FeedUseCase,
+    private val networkRepository: NetworkRepository
 ) : ViewModel(), ContainerHost<FeedState, FeedSideEffect> {
-    override val container: Container<FeedState, FeedSideEffect> = container(initialState = FeedState())
-
-    private val _showNewPost = MutableStateFlow(false)
-    val showNewPost: StateFlow<Boolean> = _showNewPost
+    override val container: Container<FeedState, FeedSideEffect> =
+        container(initialState = FeedState())
 
     init {
-        load(true)
+        viewModelScope.launch {
+            load()
+            synchronizeData()
+        }
     }
 
-    private fun load(isLoading: Boolean = false) = intent {
-        if (isLoading) {
-            reduce { state.copy(isLoading = true) }
-        }
-        reduce { state.copy(hasError = false) }
-
+    private fun load() = intent {
         when (val result = userUseCase.getMyUser()) {
             is ApiResult.Success -> {
                 reduce { state.copy(myUserId = result.data.id) }
             }
-            is ApiResult.Error -> {
-                reduce {
-                    state.copy(
-                        hasError = true,
-                        isLoading = false,
-                        isRefreshing = false
-                    )
-                }
+
+            is ApiResult.Error.Unauthorized -> {
                 postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                postSideEffect(FeedSideEffect.NavigateToLogin)
                 return@intent
+            }
+
+            is ApiResult.Error.NotFound -> {
+                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                postSideEffect(FeedSideEffect.NavigateToLogin)
+                return@intent
+            }
+
+            is ApiResult.Error -> {
+                reduce { state.copy(isRefresh = false) }
+                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
             }
         }
 
@@ -67,43 +69,34 @@ class FeedViewModel @Inject constructor(
             is ApiResult.Success -> {
                 val posts = result.data
                     .map { pagingData -> pagingData.map { it.toModel() } }
-                    .stateIn(
-                        scope = viewModelScope,
-                        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 2000),
-                        initialValue = PagingData.empty()
-                    )
                     .cachedIn(viewModelScope)
 
-                reduce {
-                    state.copy(
-                        posts = posts,
-                        isLoading = false,
-                        isRefreshing = false
-                    )
-                }
+                reduce { state.copy(posts = posts, isRefresh = false) }
             }
+
             is ApiResult.Error -> {
-                reduce {
-                    state.copy(
-                        hasError = true,
-                        isLoading = false,
-                        isRefreshing = false
-                    )
-                }
+                reduce { state.copy(isRefresh = false) }
                 postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
             }
         }
     }
 
-    fun reload() = intent {
-        _showNewPost.value = true
-        load(true)
-    }
-
     fun refresh() = intent {
-        reduce { state.copy(isRefreshing = true) }
-        delay(300)
-        load(isLoading = false)
+        reduce { state.copy(isRefresh = true) }
+        delay(600)
+
+        // 기존 캐시된 데이터 초기화
+        reduce {
+            state.copy(
+                posts = emptyFlow(),
+                deletedPostIds = emptySet(),
+                addedComments = emptyMap(),
+                deletedComments = emptyMap()
+            )
+        }
+
+        synchronizeData()
+        load()
     }
 
     fun showOptionsSheet(post: PostModel) = intent {
@@ -138,14 +131,11 @@ class FeedViewModel @Inject constructor(
         val currentState = container.stateFlow.value
         val initialComments = post.comments.toMutableList()
         val addedComments = currentState.addedComments[post.postId].orEmpty()
-        val deletedCommentIds = currentState.deletedComments[post.postId]?.map { it.id }?.toSet() ?: emptySet()
+        val deletedCommentIds =
+            currentState.deletedComments[post.postId]?.map { it.id }?.toSet() ?: emptySet()
 
         return (initialComments + addedComments).distinctBy { it.id }
             .filterNot { deletedCommentIds.contains(it.id) }
-    }
-
-    fun onNewPostBannerClick() = intent {
-        _showNewPost.value = false
     }
 
     fun onPostDelete(model: PostModel) = intent {
@@ -158,16 +148,15 @@ class FeedViewModel @Inject constructor(
                         currentDialog = FeedDialog.Hidden
                     )
                 }
-                load(true)
+                load()
             }
-            is ApiResult.Error -> {
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-            }
+
+            is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
         }
     }
 
     fun onCommentSend(postId: Long, text: String) = intent {
-        when (val result = feedUseCase.postComment(postId, text)) {
+        when (val result = feedUseCase.addComment(postId, text)) {
             is ApiResult.Success -> {
                 when (val userResult = userUseCase.getMyUser()) {
                     is ApiResult.Success -> {
@@ -177,20 +166,18 @@ class FeedViewModel @Inject constructor(
                             comment = Comment(
                                 id = result.data,
                                 text = text,
-                                username = user.username,
-                                profileImageUrl = user.profileImageUrl
+                                userName = user.userName,
+                                profileImageUrl = user.profileImagePath
                             ),
                             isDelete = false
                         )
                     }
-                    is ApiResult.Error -> {
-                        postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
-                    }
+
+                    is ApiResult.Error -> handleError(userResult)
                 }
             }
-            is ApiResult.Error -> {
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-            }
+
+            is ApiResult.Error -> handleError(result)
         }
     }
 
@@ -200,9 +187,8 @@ class FeedViewModel @Inject constructor(
                 updateComments(postId, comment, isDelete = true)
                 reduce { state.copy(currentDialog = FeedDialog.Hidden) }
             }
-            is ApiResult.Error -> {
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-            }
+
+            is ApiResult.Error -> handleError(result)
         }
     }
 
@@ -222,11 +208,21 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    fun updateLoadState(loadState: LoadState) = intent {
-        val newIsRefreshing = state.isRefreshing && loadState is LoadState.Loading
-        if (state.isRefreshing != newIsRefreshing) {
-            reduce {
-                state.copy(isRefreshing = newIsRefreshing)
+    private fun handleError(error: ApiResult.Error) = intent {
+        delay(1000)
+        reduce { state.copy(currentDialog = FeedDialog.Error(error.message)) }
+        viewModelScope.launch {
+            delay(2000)
+            reduce { state.copy(currentDialog = FeedDialog.Hidden) }
+        }
+        postSideEffect(FeedSideEffect.ShowSnackbar(error.message))
+    }
+
+    private fun synchronizeData() = intent {
+        viewModelScope.launch {
+            val isOnline = networkRepository.observeNetworkConnection().first()
+            if (isOnline) {
+                feedUseCase.synchronizeData()
             }
         }
     }
@@ -235,13 +231,11 @@ class FeedViewModel @Inject constructor(
 @Immutable
 data class FeedState(
     val myUserId: Long = -1L,
-    val posts: Flow<PagingData<PostModel>> = MutableStateFlow(PagingData.empty()),
+    val posts: Flow<PagingData<PostModel>> = emptyFlow<PagingData<PostModel>>(),
     val deletedPostIds: Set<Long> = emptySet(),
     val addedComments: Map<Long, List<Comment>> = emptyMap(),
     val deletedComments: Map<Long, List<Comment>> = emptyMap(),
-    val isLoading: Boolean = true,
-    val isRefreshing: Boolean = false,
-    val hasError: Boolean = false,
+    val isRefresh: Boolean = false,
     val currentDialog: FeedDialog = FeedDialog.Hidden,
     val optionsSheetPost: PostModel? = null,
     val commentsSheetPost: PostModel? = null
@@ -251,8 +245,10 @@ sealed interface FeedDialog {
     data object Hidden : FeedDialog
     data class DeletePost(val post: PostModel) : FeedDialog
     data class DeleteComment(val postId: Long, val comment: Comment) : FeedDialog
+    data class Error(val message: String) : FeedDialog
 }
 
 sealed interface FeedSideEffect {
     data class ShowSnackbar(val message: String) : FeedSideEffect
+    object NavigateToLogin : FeedSideEffect
 }

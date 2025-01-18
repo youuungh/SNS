@@ -55,7 +55,7 @@ fun ProfileScreen(
     viewModel.collectSideEffect { sideEffect ->
         when (sideEffect) {
             is ProfileSideEffect.ShowSnackbar -> scope.launch { snackbarHostState.showSnackbar(sideEffect.message) }
-            is ProfileSideEffect.NavigateToLogin -> onNavigateToLogin()
+            ProfileSideEffect.NavigateToLogin -> onNavigateToLogin()
         }
     }
 
@@ -73,13 +73,13 @@ fun ProfileScreen(
                 onUsernameChangeClick = { dialog = ProfileDialog.EditUsername(state.username) },
                 onSignOutClick = { dialog = ProfileDialog.SignOut }
             )
+
+            LoadingDialog(
+                isLoading = state.isLoading,
+                onDismissRequest = {}
+            )
         }
     }
-
-    LoadingDialog(
-        isLoading = state.isLoading,
-        onDismissRequest = {}
-    )
 
     ProfileDialogs(
         dialog = dialog,

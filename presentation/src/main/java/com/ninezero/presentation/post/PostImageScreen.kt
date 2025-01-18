@@ -37,6 +37,7 @@ import com.ninezero.presentation.component.DetailScaffold
 import org.orbitmvi.orbit.compose.collectAsState
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSSurface
+import com.ninezero.presentation.component.SNSTextButton
 import com.ninezero.presentation.component.bounceClick
 import com.ninezero.presentation.theme.SNSTheme
 
@@ -53,15 +54,11 @@ fun PostImageScreen(
         showBackButton = true,
         onBackClick = onNavigateToBack,
         actions = {
-            TextButton(
+            SNSTextButton(
+                text = stringResource(R.string.next),
                 onClick = onNavigateToNext,
                 enabled = state.selectedImages.isNotEmpty()
-            ) {
-                Text(
-                    text = stringResource(R.string.next),
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            )
         },
         modifier = Modifier.fillMaxSize()
     ) {
@@ -185,15 +182,11 @@ fun PostImageScreenPreview() {
             showBackButton = true,
             onBackClick = {},
             actions = {
-                TextButton(
+                SNSTextButton(
+                    text = "다음",
                     onClick = {},
                     enabled = true
-                ) {
-                    Text(
-                        text = "다음",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                )
             },
             snackbarHostState = remember { SnackbarHostState() },
             modifier = Modifier.fillMaxSize()

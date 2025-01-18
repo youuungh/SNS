@@ -10,9 +10,9 @@
 //import androidx.core.app.NotificationCompat
 //import androidx.lifecycle.LifecycleService
 //import androidx.lifecycle.lifecycleScope
-//import com.ninezero.data.model.ContentParam
-//import com.ninezero.data.model.PostParam
-//import com.ninezero.data.model.PostParcel
+//import com.ninezero.data.model.param.ContentParam
+//import com.ninezero.data.model.param.PostParam
+//import com.ninezero.data.model.parcel.PostParcel
 //import com.ninezero.data.retrofit.PostService
 //import com.ninezero.domain.model.ACTION_POSTED
 //import com.ninezero.domain.model.ApiResult

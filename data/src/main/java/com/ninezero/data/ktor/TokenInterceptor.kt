@@ -1,11 +1,11 @@
-package com.ninezero.data.retrofit
+package com.ninezero.data.ktor
 
 import com.ninezero.data.UserDataStore
 import kotlinx.coroutines.runBlocking
-import okhttp3.Interceptor
-import okhttp3.Response
+import timber.log.Timber
 import javax.inject.Inject
 
+/** retrofit
 class TokenInterceptor @Inject constructor(
     private val userDatastore: UserDataStore
 ) : Interceptor {
@@ -24,5 +24,16 @@ class TokenInterceptor @Inject constructor(
                 .addHeader("Content-Type", "application/json; charset=UTF8")
                 .build()
         )
+    }
+}
+*/
+
+class TokenInterceptor @Inject constructor(
+    private val userDatastore: UserDataStore
+) {
+    fun getToken(): String? = runBlocking {
+        val token = userDatastore.getToken()
+        Timber.d("Token retrieved in TokenInterceptor: $token")
+        token
     }
 }

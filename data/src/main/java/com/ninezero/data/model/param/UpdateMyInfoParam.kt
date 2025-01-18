@@ -1,4 +1,4 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.param
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -7,12 +7,10 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 @Serializable
-data class SignUpParam(
-    val loginId: String,
-    val name: String,
-    val password: String,
+data class UpdateMyInfoParam(
+    val userName: String,
     val extraUserInfo: String,
-    val profileFilePath: String
+    val profileImagePath: String
 ) {
     fun toRequestBody(): RequestBody {
         return Json.encodeToString(this).toRequestBody()

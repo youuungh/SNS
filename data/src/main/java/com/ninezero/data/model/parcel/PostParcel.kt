@@ -1,4 +1,4 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.parcel
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize

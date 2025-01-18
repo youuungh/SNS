@@ -20,24 +20,24 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : BaseActivity() {
     private val feedViewModel: FeedViewModel by viewModels()
 
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_POSTED) {
-                feedViewModel.reload()
-            }
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        ContextCompat.registerReceiver(
-            this,
-            receiver,
-            IntentFilter(ACTION_POSTED),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-    }
+//    private val receiver = object : BroadcastReceiver() {
+//        override fun onReceive(context: Context?, intent: Intent?) {
+//            if (intent?.action == ACTION_POSTED) {
+//                feedViewModel.reload()
+//            }
+//        }
+//    }
+//
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//
+//        ContextCompat.registerReceiver(
+//            this,
+//            receiver,
+//            IntentFilter(ACTION_POSTED),
+//            ContextCompat.RECEIVER_NOT_EXPORTED
+//        )
+//    }
 
     @Composable
     override fun Content() {
@@ -56,8 +56,8 @@ class MainActivity : BaseActivity() {
         )
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        unregisterReceiver(receiver)
-    }
+//    override fun onDestroy() {
+//        super.onDestroy()
+//        unregisterReceiver(receiver)
+//    }
 }

@@ -1,4 +1,4 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.dto
 
 import kotlinx.serialization.Serializable
 

@@ -6,6 +6,9 @@ import com.mohamedrejeb.richeditor.model.RichTextState
 import com.ninezero.domain.model.Image
 import com.ninezero.domain.usecase.PostUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
@@ -23,7 +26,9 @@ class PostViewModel @Inject constructor(
 
     fun load() = intent {
         try {
-            val images = postUseCase.getImageList()
+            val images = withContext(IO) {
+                postUseCase.getImageList()
+            }
             reduce {
                 state.copy(
                     selectedImages = images.firstOrNull()?.let { listOf(it) } ?: emptyList(),
@@ -47,22 +52,24 @@ class PostViewModel @Inject constructor(
 
     fun onPostClick() = intent {
         reduce { state.copy(isLoading = true) }
-        try {
-            postUseCase.createPost(
-                title = "제목없음",
-                content = state.richTextState.toHtml(),
-                images = state.selectedImages
-            )
-            reduce { state.copy(isLoading = false) }
-            postSideEffect(PostSideEffect.Finish)
-        } catch (e: Exception) {
-            reduce { state.copy(isLoading = false) }
-            postSideEffect(PostSideEffect.ShowSnackbar("게시물 업로드에 실패했습니다"))
-        }
-    }
+        delay(1000)
 
-    fun onKeyboardVisibilityChanged(isVisible: Boolean) = intent {
-        reduce { state.copy(isKeyboardVisible = isVisible) }
+        withContext(IO) {
+            try {
+                val htmlContent = state.richTextState.toHtml()
+
+                postUseCase.createPost(
+                    title = "제목없음",
+                    content = htmlContent,
+                    images = state.selectedImages
+                )
+                reduce { state.copy(isLoading = false) }
+                postSideEffect(PostSideEffect.Finish)
+            } catch (e: Exception) {
+                reduce { state.copy(isLoading = false) }
+                postSideEffect(PostSideEffect.ShowSnackbar("게시물 업로드에 실패했습니다"))
+            }
+        }
     }
 }
 
@@ -71,8 +78,7 @@ data class PostState(
     val richTextState: RichTextState = RichTextState(),
     val selectedImages: List<Image> = emptyList(),
     val images: List<Image> = emptyList(),
-    val isLoading: Boolean = false,
-    val isKeyboardVisible: Boolean = false
+    val isLoading: Boolean = false
 )
 
 sealed interface PostSideEffect {

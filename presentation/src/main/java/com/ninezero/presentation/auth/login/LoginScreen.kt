@@ -41,21 +41,19 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     onNavigateToSignUp: () -> Unit,
-    onNavigateToFeed: () -> Unit
+    onNavigateToFeed: () -> Unit,
+    onShowSnackbar: (String) -> Unit,
 ) {
     val state = viewModel.collectAsState().value
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     viewModel.collectSideEffect { sideEffect ->
         when (sideEffect) {
-            is LoginSideEffect.ShowSnackbar -> scope.launch { snackbarHostState.showSnackbar(sideEffect.message) }
+            is LoginSideEffect.ShowSnackbar -> onShowSnackbar(sideEffect.message)
             LoginSideEffect.NavigateToFeed -> onNavigateToFeed()
         }
     }
 
     DetailScaffold(
-        snackbarHostState = snackbarHostState,
         isLoading = state.isLoading,
         modifier = Modifier.fillMaxSize()
     ) {

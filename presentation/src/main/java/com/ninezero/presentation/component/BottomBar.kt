@@ -2,6 +2,7 @@ package com.ninezero.presentation.component
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.ninezero.presentation.main.MainRoute
 
 private val BottomNavHeight = 56.dp
@@ -98,8 +100,12 @@ fun SNSBottomBar(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                AsyncImage(
-                                    model = imageUrl ?: item.defaultIconRes,
+                                Image(
+                                    painter = rememberAsyncImagePainter(
+                                        model = imageUrl,
+                                        error = painterResource(id = item.defaultIconRes),
+                                        placeholder = painterResource(id = item.defaultIconRes)
+                                    ),
                                     contentDescription = item.contentDescription,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()

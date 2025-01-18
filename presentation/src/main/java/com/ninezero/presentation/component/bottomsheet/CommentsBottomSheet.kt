@@ -172,13 +172,13 @@ private fun CommentsBottomSheetContentPreview() {
     val sampleComments = listOf(
         Comment(
             id = 1L,
-            username = "User One",
+            userName = "User One",
             profileImageUrl = null,
             text = "첫 번째 댓글입니다."
         ),
         Comment(
             id = 2L,
-            username = "User Two",
+            userName = "User Two",
             profileImageUrl = null,
             text = "두 번째 댓글입니다. 조금 더 긴 댓글을 작성해보았습니다."
         )

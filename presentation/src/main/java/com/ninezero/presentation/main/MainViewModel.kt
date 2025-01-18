@@ -29,7 +29,7 @@ class MainViewModel @Inject constructor(
             is ApiResult.Success -> {
                 _uiState.update {
                     it.copy(
-                        profileImageUrl = result.data.profileImageUrl
+                        profileImageUrl = result.data.profileImagePath
                     )
                 }
             }

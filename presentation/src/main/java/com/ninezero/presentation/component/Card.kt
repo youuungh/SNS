@@ -140,7 +140,7 @@ fun PostCard(
                         }
                     )
 
-                    if (showMore && !isExpanded) {
+                    if (showMore && !isExpanded && !richTextState.annotatedString.text.isBlank()) {
                         Text(
                             text = stringResource(id = R.string.show_more),
                             style = MaterialTheme.typography.labelLarge,

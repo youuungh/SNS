@@ -1,4 +1,4 @@
-package com.ninezero.data.retrofit
+package com.ninezero.data.ktor
 
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType

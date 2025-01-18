@@ -2,6 +2,7 @@ package com.ninezero.presentation.component
 
 import android.content.res.Configuration
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -26,12 +28,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninezero.presentation.theme.LocalTheme
@@ -44,6 +49,8 @@ import com.ninezero.presentation.theme.snsSmallButtonDarkBackground
 import com.ninezero.presentation.theme.snsSmallButtonDarkText
 import com.ninezero.presentation.theme.snsSmallButtonLightBackground
 import com.ninezero.presentation.theme.snsSmallButtonLightText
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class ButtonState { Pressed, Idle }
 
@@ -413,6 +420,81 @@ fun SNSIconButton(
     }
 }
 
+@Composable
+fun SNSTextButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun SNSTextButton(
+    @StringRes textResId: Int,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    SNSTextButton(
+        text = stringResource(id = textResId),
+        onClick = onClick,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun ScrollToTopButton(
+    listState: LazyListState,
+    modifier: Modifier
+) {
+    val scope = rememberCoroutineScope()
+    var showButton by remember { mutableStateOf(false) }
+    var lastScrollTime by remember { mutableLongStateOf(0L) }
+
+    val shouldShowButton by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+    }
+
+    LaunchedEffect(shouldShowButton) {
+        if (shouldShowButton) {
+            showButton = true
+            lastScrollTime = System.currentTimeMillis()
+        } else {
+            showButton = false
+        }
+    }
+
+    LaunchedEffect(lastScrollTime) {
+        if (lastScrollTime > 0) {
+            delay(3000)
+            if (System.currentTimeMillis() - lastScrollTime >= 3000) {
+                showButton = false
+            }
+        }
+    }
+
+    TopFAB(
+        visible = showButton,
+        onClick = {
+            scope.launch {
+                listState.animateScrollToItem(0)
+                showButton = false
+            }
+        },
+        modifier = modifier.padding(16.dp)
+    )
+}
+
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -484,6 +566,16 @@ private fun SNSButtonPreview() {
                     onClick = { },
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "close"
+                )
+                SNSTextButton(
+                    text = "클릭",
+                    onClick = {},
+                    enabled = true
+                )
+                SNSTextButton(
+                    text = "클릭",
+                    onClick = {},
+                    enabled = false
                 )
             }
         }

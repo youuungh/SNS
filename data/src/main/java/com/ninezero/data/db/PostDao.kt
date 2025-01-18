@@ -5,7 +5,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.ninezero.data.model.PostDto
+import androidx.room.Update
+import com.ninezero.data.model.dto.PostDto
 
 @Dao
 interface PostDao {
@@ -16,9 +17,21 @@ interface PostDao {
     @Query("SELECT * FROM posts ORDER BY id DESC")
     fun getAll(): PagingSource<Int, PostDto>
 
-    @Query("SELECT COUNT(*) FROM posts")
-    suspend fun getCount(): Int
+    @Query("SELECT id FROM posts")
+    suspend fun getAllPostIds(): List<Long>
+
+    @Query("SELECT * FROM posts WHERE id = :postId")
+    suspend fun getPostById(postId: Long): PostDto?
+
+    @Update
+    suspend fun updatePost(post: PostDto)
 
     @Query("DELETE FROM posts")
     fun deleteAll()
+
+    @Query("DELETE FROM posts WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("SELECT COUNT(*) FROM posts")
+    suspend fun getCount(): Int
 }

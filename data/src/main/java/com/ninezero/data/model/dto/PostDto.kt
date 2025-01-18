@@ -1,7 +1,8 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.dto
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.ninezero.data.model.param.ContentParam
 import com.ninezero.domain.model.Post
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -16,8 +17,9 @@ data class PostDto(
     val updatedAt: String,
     val createUserId: Long,
     val createUserName: String,
-    val createUserProfileFilePath: String,
-    val commentList: List<CommentDto>
+    val createUserProfileImagePath: String,
+    val comments: List<CommentDto>,
+    val likesCount: Int = 0
 )
 
 fun PostDto.toDomain(): Post {
@@ -28,8 +30,9 @@ fun PostDto.toDomain(): Post {
         title = this.title,
         content = contentParam.text,
         images = contentParam.images,
-        username = this.createUserName,
-        profileImageUrl = this.createUserProfileFilePath,
-        comments = this.commentList.map { it.toDomain() }
+        userName = this.createUserName,
+        profileImageUrl = this.createUserProfileImagePath,
+        comments = this.comments.map { it.toDomain() },
+        likesCount = this.likesCount
     )
 }

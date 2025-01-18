@@ -1,4 +1,4 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.param
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -7,10 +7,8 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 @Serializable
-data class UpdateMyInfoParam(
-    val userName: String,
-    val extraUserInfo: String,
-    val profileFilePath: String
+data class CommentParam(
+    val comment: String
 ) {
     fun toRequestBody(): RequestBody {
         return Json.encodeToString(this).toRequestBody()

@@ -11,19 +11,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusManager
-import androidx.compose.ui.focus.FocusState
-import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.mohamedrejeb.richeditor.model.RichTextState
@@ -34,6 +28,7 @@ import com.ninezero.presentation.R
 import com.ninezero.presentation.component.PostToolbar
 import com.ninezero.presentation.component.SNSImagePager
 import com.ninezero.presentation.component.SNSSurface
+import com.ninezero.presentation.component.SNSTextButton
 import com.ninezero.presentation.theme.SNSTheme
 
 @Composable
@@ -45,107 +40,75 @@ fun PostScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val onFocusChange = remember(viewModel) {
-        { focusState: FocusState ->
-            viewModel.onKeyboardVisibilityChanged(focusState.isFocused)
-            Unit
-        }
-    }
-
     DetailScaffold(
         title = "",
         showBackButton = true,
         onBackClick = onNavigateToBack,
         actions = {
-            TextButton(
+            SNSTextButton(
+                text = stringResource(R.string.posting),
                 onClick = {
                     focusManager.clearFocus()
                     keyboardController?.hide()
                     viewModel.onPostClick()
                 },
                 enabled = state.selectedImages.isNotEmpty()
-            ) {
-                Text(
-                    text = stringResource(R.string.posting),
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            )
         },
         bottomBar = {
-            if (state.isKeyboardVisible) {
-                PostToolbar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding(),
-                    richTextState = state.richTextState
-                )
-            }
+            PostToolbar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                richTextState = state.richTextState
+            )
         },
         isLoading = state.isLoading,
         modifier = Modifier.fillMaxSize()
     ) {
-        PostContent(
-            richTextState = state.richTextState,
-            images = state.selectedImages.map { it.uri },
-            onFocusChange = onFocusChange,
-            focusManager = focusManager,
-            keyboardController = keyboardController
-        )
-    }
-}
-
-@Composable
-private fun PostContent(
-    richTextState: RichTextState,
-    images: List<String>,
-    onFocusChange: (FocusState) -> Unit,
-    focusManager: FocusManager,
-    keyboardController: SoftwareKeyboardController?
-) {
-    SNSSurface(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                })
-            }
-    ) {
-        Column(
+        SNSSurface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            SNSImagePager(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(2f),
-                images = images
-            )
-
-            BasicRichTextEditor(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(3f)
-                    .onFocusEvent { onFocusChange(it) },
-                state = richTextState,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                decorationBox = { innerTextField ->
-                    if (richTextState.annotatedString.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.label_hint_add_text),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                    innerTextField()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    })
                 }
-            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                SNSImagePager(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(2f),
+                    images = state.selectedImages.map { it.uri }
+                )
+
+                BasicRichTextEditor(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(3f),
+                    state = state.richTextState,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    decorationBox = { innerTextField ->
+                        if (state.richTextState.annotatedString.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.label_hint_add_text),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+            }
         }
     }
 }
@@ -160,25 +123,61 @@ private fun PostScreenPreview() {
             showBackButton = true,
             onBackClick = {},
             actions = {
-                TextButton(
+                SNSTextButton(
+                    text = "게시",
                     onClick = {},
                     enabled = true
-                ) {
-                    Text(
-                        text = "게시",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                )
+            },
+            bottomBar = {
+                PostToolbar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding(),
+                    richTextState = RichTextState()
+                )
             },
             modifier = Modifier.fillMaxSize()
         ) {
-            PostContent(
-                richTextState = RichTextState(),
-                images = emptyList(),
-                onFocusChange = {},
-                focusManager = LocalFocusManager.current,
-                keyboardController = null
-            )
+            SNSSurface(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    SNSImagePager(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(2f),
+                        images = emptyList()
+                    )
+
+                    BasicRichTextEditor(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(3f),
+                        state = RichTextState(),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (RichTextState().annotatedString.isEmpty()) {
+                                Text(
+                                    text = "내용을 입력하세요",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                }
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.param
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString

@@ -1,4 +1,4 @@
-package com.ninezero.data.model
+package com.ninezero.data.model.dto
 
 import com.ninezero.domain.model.Comment
 import kotlinx.serialization.Serializable
@@ -17,7 +17,7 @@ fun CommentDto.toDomain() : Comment {
     return Comment(
         id = id,
         text = comment,
-        username = createUserName,
+        userName = createUserName,
         profileImageUrl = profileImageUrl
     )
 }

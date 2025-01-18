@@ -131,7 +131,8 @@ fun MainScreen(
             composable(MainRoute.BottomNavItem.Feed.route) {
                 FeedScreen(
                     viewModel = feedViewModel,
-                    snackbarHostState = snackbarHostState
+                    snackbarHostState = snackbarHostState,
+                    onNavigateToLogin = onNavigateToLogin
                 )
             }
             composable(MainRoute.BottomNavItem.Profile.route) {

@@ -1,7 +1,7 @@
 package com.ninezero.data.db
 
 import androidx.room.TypeConverter
-import com.ninezero.data.model.CommentDto
+import com.ninezero.data.model.dto.CommentDto
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 

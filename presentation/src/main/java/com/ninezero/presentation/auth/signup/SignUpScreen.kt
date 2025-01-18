@@ -33,17 +33,16 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 fun SignUpScreen(
     viewModel: SignUpViewModel = hiltViewModel(),
     onNavigateToLogin: () -> Unit,
-    onNavigateToBack: () -> Unit
+    onNavigateToBack: () -> Unit,
+    onShowSnackbar: (String) -> Unit,
 ) {
     val state = viewModel.collectAsState().value
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     viewModel.collectSideEffect { sideEffect ->
         when (sideEffect) {
-            is SignUpSideEffect.ShowSnackbar -> scope.launch { snackbarHostState.showSnackbar(sideEffect.message) }
+            is SignUpSideEffect.ShowSnackbar -> onShowSnackbar(sideEffect.message)
             SignUpSideEffect.NavigateToLogin -> onNavigateToLogin()
         }
     }
@@ -56,7 +55,6 @@ fun SignUpScreen(
             keyboardController?.hide()
             onNavigateToBack()
         },
-        snackbarHostState = snackbarHostState,
         isLoading = state.isLoading,
         modifier = Modifier.fillMaxSize()
     ) {

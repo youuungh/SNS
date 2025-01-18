@@ -39,7 +39,7 @@ fun CommentItem(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = comment.username.replaceFirstChar { it.uppercase() },
+                text = comment.userName.replaceFirstChar { it.uppercase() },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 fontWeight = FontWeight.Bold
@@ -71,7 +71,7 @@ private fun CommentItemPreview() {
         CommentItem(
             comment = Comment(
                 id = 1L,
-                username = "User",
+                userName = "User",
                 profileImageUrl = null,
                 text = "This is a sample comment, This is a sample comment, This is a sample comment"
             ),
