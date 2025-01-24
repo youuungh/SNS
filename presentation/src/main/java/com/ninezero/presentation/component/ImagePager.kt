@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -81,12 +82,11 @@ fun SNSImagePager(
 @Composable
 fun SNSPostPager(
     modifier: Modifier = Modifier,
-    images: List<String>
+    images: List<String>,
+    pagerState: PagerState
 ) {
     Box(modifier = modifier) {
         if (images.isNotEmpty()) {
-            val pagerState = rememberPagerState(pageCount = { images.size })
-
             HorizontalPager(
                 state = pagerState,
             ) { index ->

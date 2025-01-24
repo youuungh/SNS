@@ -10,5 +10,4 @@ interface FeedUseCase {
     suspend fun addComment(postId: Long, text: String): ApiResult<Long>
     suspend fun deletePost(postId: Long): ApiResult<Long>
     suspend fun deleteComment(postId: Long, commentId: Long): ApiResult<Long>
-    suspend fun synchronizeData()
 }

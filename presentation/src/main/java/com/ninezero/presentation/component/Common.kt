@@ -155,7 +155,7 @@ fun NetworkErrorScreen(
             modifier = Modifier.padding(horizontal = 32.dp)
         ) {
             Text(
-                text = stringResource(R.string.label_error_network_unavailable),
+                text = stringResource(R.string.error_network_unavailable),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface
@@ -164,10 +164,10 @@ fun NetworkErrorScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = stringResource(R.string.label_error_check_network_and_retry),
+                text = stringResource(R.string.error_check_network_and_retry),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.outline
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -195,6 +195,52 @@ fun LoadingProgress(
             strokeWidth = 2.dp,
             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f),
             trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        )
+    }
+}
+
+@Composable
+fun AppendError(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.error_load_data),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
+            SNSSmallOutlinedButton(
+                text = stringResource(R.string.retry),
+                onClick = onRetry
+            )
+        }
+    }
+}
+
+@Composable
+fun AppendEnd(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(R.string.label_end_of_page),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline
         )
     }
 }
@@ -236,6 +282,30 @@ private fun TopFABPreview() {
             visible = true,
             onClick = {}
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AppendErrorPreview() {
+    SNSTheme {
+        Surface {
+            AppendError(
+                onRetry = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AppendEndPreview() {
+    SNSTheme {
+        Surface {
+            AppendEnd()
+        }
     }
 }
 

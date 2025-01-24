@@ -150,7 +150,10 @@ private fun LoginContent(
                     ) {
                         Text(
                             text = stringResource(R.string.label_no_account),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.outline
+                            ),
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(end = 8.dp)
                         )
                         Text(

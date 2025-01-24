@@ -1,10 +1,5 @@
 package com.ninezero.presentation.feed
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -15,26 +10,28 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import com.ninezero.presentation.component.DeleteCommentDialog
 import com.ninezero.presentation.component.DeletePostDialog
-import com.ninezero.presentation.component.EmptyFeedScreen
+import com.ninezero.presentation.component.AppendEnd
 import com.ninezero.presentation.component.ErrorDialog
 import com.ninezero.presentation.component.LoadingProgress
 import com.ninezero.presentation.component.NetworkErrorScreen
+import com.ninezero.presentation.component.AppendError
+import com.ninezero.presentation.component.EmptyFeedScreen
 import com.ninezero.presentation.component.PostCard
 import com.ninezero.presentation.component.PullToRefreshLayout
 import com.ninezero.presentation.component.SNSSurface
-import com.ninezero.presentation.component.ScrollToTopButton
 import com.ninezero.presentation.component.ShimmerPostCards
+import com.ninezero.presentation.component.TopFAB
 import com.ninezero.presentation.component.bottomsheet.CommentsBottomSheet
 import com.ninezero.presentation.component.bottomsheet.OptionsBottomSheet
-import com.ninezero.presentation.util.isEmpty
-import com.ninezero.presentation.util.isError
-import com.ninezero.presentation.util.isLoading
-import com.ninezero.presentation.util.isNotEmpty
+import com.ninezero.presentation.util.onScroll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
+import timber.log.Timber
 
 @Composable
 fun FeedScreen(
@@ -47,11 +44,22 @@ fun FeedScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    var isInit by remember { mutableStateOf(true ) }
+    var isInit by remember { mutableStateOf(true) }
+    var showFab by remember { mutableStateOf(false) }
+    var lastScrollTime by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(posts.loadState.refresh) {
         if (posts.loadState.refresh is LoadState.NotLoading) {
             isInit = false
+        }
+    }
+
+    LaunchedEffect(lastScrollTime) {
+        if (lastScrollTime > 0) {
+            delay(3000)
+            if (System.currentTimeMillis() - lastScrollTime >= 3000) {
+                showFab = false
+            }
         }
     }
 
@@ -60,67 +68,98 @@ fun FeedScreen(
             is FeedSideEffect.ShowSnackbar -> scope.launch {
                 snackbarHostState.showSnackbar(sideEffect.message)
             }
+
             FeedSideEffect.NavigateToLogin -> onNavigateToLogin()
         }
     }
 
     SNSSurface {
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                isInit && posts.isLoading() -> repeat(3) { ShimmerPostCards() }
-                posts.isEmpty() -> EmptyFeedScreen()
-                posts.isError() -> NetworkErrorScreen(
-                    onRetry = {
-                        isInit = true
-                        posts.refresh()
+        PullToRefreshLayout(
+            refreshing = state.isRefreshing,
+            onRefresh = { viewModel.refresh() }
+        ) {
+            when (posts.loadState.refresh) {
+                is LoadState.Loading -> {
+                    Timber.d("Refresh LoadState: Loading")
+                    if (isInit && !state.isRefreshing) {
+                        repeat(3) { ShimmerPostCards() }
                     }
-                )
+                }
+
+                is LoadState.Error -> {
+                    NetworkErrorScreen(onRetry = { posts.refresh() })
+                }
+
                 else -> {
-                    PullToRefreshLayout(
-                        refreshing = state.isRefresh,
-                        onRefresh = { viewModel.refresh() }
-                    ) {
-                        AnimatedVisibility(
-                            visible = posts.isNotEmpty(),
-                            enter = fadeIn(animationSpec = tween(100)),
-                            exit = fadeOut(animationSpec = tween(100))
+                    if (posts.itemCount == 0) {
+                        EmptyFeedScreen()
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .onScroll { _, _ ->
+                                    if (listState.firstVisibleItemIndex > 0) {
+                                        showFab = true
+                                        lastScrollTime = System.currentTimeMillis()
+                                    } else {
+                                        showFab = false
+                                    }
+                                }
                         ) {
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(
-                                    count = posts.itemCount,
-                                    key = { posts[it]?.postId ?: it }
-                                ) { index ->
-                                    posts[index]?.let { post ->
-                                        if (!state.deletedPostIds.contains(post.postId)) {
-                                            PostCard(
-                                                postId = post.postId,
-                                                username = post.username,
-                                                profileImageUrl = post.profileImageUrl,
-                                                images = post.images,
-                                                richTextState = post.richTextState,
-                                                comments = viewModel.getCombinedComments(post),
-                                                isOwner = post.userId == state.myUserId,
-                                                onOptionClick = { viewModel.showOptionsSheet(post) },
-                                                onCommentClick = { viewModel.showCommentsSheet(post) }
-                                            )
+                            items(
+                                count = posts.itemCount,
+                                key = posts.itemKey { it.postId }
+                            ) { index ->
+                                posts[index]?.let { post ->
+                                    if (!state.deletedPostIds.contains(post.postId)) {
+                                        PostCard(
+                                            postId = post.postId,
+                                            username = post.username,
+                                            profileImageUrl = post.profileImageUrl,
+                                            images = post.images,
+                                            richTextState = post.richTextState,
+                                            comments = viewModel.getCombinedComments(post),
+                                            isOwner = post.userId == state.myUserId,
+                                            onOptionClick = { viewModel.showOptionsSheet(post) },
+                                            onCommentClick = { viewModel.showCommentsSheet(post) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            item {
+                                when (val append = posts.loadState.append) {
+                                    is LoadState.Loading -> {
+                                        if (posts.loadState.refresh !is LoadState.Loading) {
+                                            LoadingProgress()
+                                        }
+                                    }
+
+                                    is LoadState.Error -> {
+                                        AppendError(onRetry = { posts.retry() })
+                                    }
+
+                                    is LoadState.NotLoading -> {
+                                        if (append.endOfPaginationReached) {
+                                            AppendEnd()
                                         }
                                     }
                                 }
-
-                                if (posts.loadState.append is LoadState.Loading) {
-                                    item { LoadingProgress() }
-                                }
                             }
                         }
-                    }
 
-                    ScrollToTopButton(
-                        listState = listState,
-                        modifier = Modifier.align(Alignment.BottomEnd)
-                    )
+                        TopFAB(
+                            visible = showFab,
+                            onClick = {
+                                scope.launch {
+                                    listState.animateScrollToItem(0)
+                                    showFab = false
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        )
+                    }
                 }
             }
         }

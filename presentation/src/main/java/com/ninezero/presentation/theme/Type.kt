@@ -17,6 +17,15 @@ private val suitFamily = FontFamily(
     Font(R.font.suit_extra_bold, FontWeight.ExtraBold)
 )
 
+private val pretendardFamily = FontFamily(
+    Font(R.font.pretendard_light, FontWeight.Light),
+    Font(R.font.pretendard_light, FontWeight.Normal),
+    Font(R.font.pretendard_medium, FontWeight.Medium),
+    Font(R.font.pretendard_semi_bold, FontWeight.SemiBold),
+    Font(R.font.pretendard_bold, FontWeight.Bold),
+    Font(R.font.pretendard_extra_bold, FontWeight.ExtraBold)
+)
+
 // Set of Material typography styles to start with
 val Typography = Typography(
     displayLarge = TextStyle(

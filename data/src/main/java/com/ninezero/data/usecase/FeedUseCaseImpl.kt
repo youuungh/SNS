@@ -5,14 +5,11 @@ import com.ninezero.data.model.param.CommentParam
 import com.ninezero.data.ktor.PostService
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
-import com.ninezero.domain.model.Comment
 import com.ninezero.domain.model.Post
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.repository.PostRepository
 import com.ninezero.domain.usecase.FeedUseCase
-import com.ninezero.domain.usecase.UserUseCase
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -89,8 +86,7 @@ class FeedUseCaseImpl @Inject constructor(
 class FeedUseCaseImpl @Inject constructor(
     private val postService: PostService,
     private val postRepository: PostRepository,
-    private val networkRepository: NetworkRepository,
-    private val userUseCase: UserUseCase
+    private val networkRepository: NetworkRepository
 ) : FeedUseCase {
 
     override suspend fun getPosts(): ApiResult<Flow<PagingData<Post>>> = try {
@@ -110,24 +106,10 @@ class FeedUseCaseImpl @Inject constructor(
                 return ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
             }
 
-            // 현재 사용자 정보
-            val currentUser = when (val userResult = userUseCase.getMyUser()) {
-                is ApiResult.Success -> userResult.data
-                is ApiResult.Error -> return ApiResult.Error.ServerError("사용자 정보를 가져올 수 없습니다")
-            }
-
             val commentParam = CommentParam(text)
             val response = postService.addComment(postId = postId, requestBody = commentParam)
-
             if (response.result == "SUCCESS") {
-                // 서버 응답 성공 시 로컬 DB도 업데이트
-                postRepository.addComment(postId, Comment(
-                    id = response.data!!,
-                    text = text,
-                    userName = currentUser.userName,
-                    profileImageUrl = currentUser.profileImagePath
-                ))
-                ApiResult.Success(response.data)
+                ApiResult.Success(response.data!!)
             } else {
                 ApiResult.Error.ServerError(response.errorMessage ?: "댓글 작성에 실패했습니다")
             }
@@ -144,10 +126,7 @@ class FeedUseCaseImpl @Inject constructor(
             }
 
             val response = postService.deletePost(id = postId)
-
             if (response.result == "SUCCESS") {
-                // 서버 응답 성공 시 로컬 DB도 업데이트
-                postRepository.deletePost(postId)
                 ApiResult.Success(response.data!!)
             } else {
                 ApiResult.Error.ServerError(response.errorMessage ?: "게시물 삭제에 실패했습니다")
@@ -168,23 +147,13 @@ class FeedUseCaseImpl @Inject constructor(
             }
 
             val response = postService.deleteComment(postId, commentId)
-
             if (response.result == "SUCCESS") {
-                // 서버 응답 성공 시 로컬 DB도 업데이트
-                postRepository.deleteComment(postId, commentId)
                 ApiResult.Success(response.data!!)
             } else {
                 ApiResult.Error.ServerError(response.errorMessage ?: "댓글 삭제에 실패했습니다")
             }
         } catch (e: Exception) {
             e.handleNetworkException()
-        }
-    }
-
-    override suspend fun synchronizeData() {
-        val isOnline = networkRepository.observeNetworkConnection().first()
-        if (isOnline) {
-            postRepository.synchronizeWithServer()
         }
     }
 }

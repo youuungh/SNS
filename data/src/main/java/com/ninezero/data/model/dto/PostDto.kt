@@ -7,7 +7,7 @@ import com.ninezero.domain.model.Post
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-@Entity(tableName = "posts")
+@Entity
 @Serializable
 data class PostDto(
     @PrimaryKey val id: Long,

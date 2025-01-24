@@ -29,14 +29,12 @@ object RepositoryModule {
     fun providePostRepository(
         database: PostDatabase,
         postService: PostService,
-        networkRepository: NetworkRepository,
-        userUseCase: UserUseCase
+        networkRepository: NetworkRepository
     ): PostRepository {
         return PostRepositoryImpl(
             database = database,
             postService = postService,
-            networkRepository = networkRepository,
-            userUseCase = userUseCase
+            networkRepository = networkRepository
         )
     }
 }

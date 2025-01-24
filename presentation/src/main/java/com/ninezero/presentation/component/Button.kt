@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -49,8 +48,6 @@ import com.ninezero.presentation.theme.snsSmallButtonDarkBackground
 import com.ninezero.presentation.theme.snsSmallButtonDarkText
 import com.ninezero.presentation.theme.snsSmallButtonLightBackground
 import com.ninezero.presentation.theme.snsSmallButtonLightText
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 enum class ButtonState { Pressed, Idle }
 
@@ -449,49 +446,6 @@ fun SNSTextButton(
         text = stringResource(id = textResId),
         onClick = onClick,
         enabled = enabled
-    )
-}
-
-@Composable
-fun ScrollToTopButton(
-    listState: LazyListState,
-    modifier: Modifier
-) {
-    val scope = rememberCoroutineScope()
-    var showButton by remember { mutableStateOf(false) }
-    var lastScrollTime by remember { mutableLongStateOf(0L) }
-
-    val shouldShowButton by remember {
-        derivedStateOf { listState.firstVisibleItemIndex > 0 }
-    }
-
-    LaunchedEffect(shouldShowButton) {
-        if (shouldShowButton) {
-            showButton = true
-            lastScrollTime = System.currentTimeMillis()
-        } else {
-            showButton = false
-        }
-    }
-
-    LaunchedEffect(lastScrollTime) {
-        if (lastScrollTime > 0) {
-            delay(3000)
-            if (System.currentTimeMillis() - lastScrollTime >= 3000) {
-                showButton = false
-            }
-        }
-    }
-
-    TopFAB(
-        visible = showButton,
-        onClick = {
-            scope.launch {
-                listState.animateScrollToItem(0)
-                showButton = false
-            }
-        },
-        modifier = modifier.padding(16.dp)
     )
 }
 

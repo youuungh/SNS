@@ -6,7 +6,7 @@ import com.ninezero.domain.model.Comment
 import com.ninezero.domain.model.Post
 
 @Immutable
-data class PostModel(
+data class PostCardModel(
     val userId: Long,
     val postId: Long,
     val username: String,
@@ -16,14 +16,14 @@ data class PostModel(
     val comments: List<Comment>
 )
 
-fun Post.toModel(): PostModel {
-    return PostModel(
-        userId = this.userId,
-        postId = this.id,
-        username = this.userName,
-        profileImageUrl = this.profileImageUrl,
-        images = this.images,
+fun Post.toModel(): PostCardModel {
+    return PostCardModel(
+        userId = userId,
+        postId = id,
+        username = userName,
+        profileImageUrl = profileImageUrl,
+        images = images,
         richTextState = RichTextState().apply { setHtml(this@toModel.content) },
-        comments = this.comments
+        comments = comments
     )
 }

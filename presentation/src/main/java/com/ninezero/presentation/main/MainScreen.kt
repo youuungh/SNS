@@ -40,14 +40,12 @@ import com.ninezero.presentation.profile.ProfileScreen
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSIconButton
-import com.ninezero.presentation.feed.FeedViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
-    feedViewModel: FeedViewModel,
     onNavigateToPost: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit
@@ -130,7 +128,6 @@ fun MainScreen(
         ) {
             composable(MainRoute.BottomNavItem.Feed.route) {
                 FeedScreen(
-                    viewModel = feedViewModel,
                     snackbarHostState = snackbarHostState,
                     onNavigateToLogin = onNavigateToLogin
                 )
@@ -235,7 +232,6 @@ fun Context.findActivity(): ComponentActivity? {
 fun MainScreenPreview() {
     SNSTheme {
         MainScreen(
-            feedViewModel = hiltViewModel(),
             onNavigateToPost = {},
             onNavigateToSettings = {},
             onNavigateToLogin = {}

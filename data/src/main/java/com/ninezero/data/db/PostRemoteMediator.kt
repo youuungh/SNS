@@ -7,91 +7,108 @@ import androidx.room.withTransaction
 import com.ninezero.data.model.dto.PostDto
 import com.ninezero.data.ktor.PostService
 import com.ninezero.domain.repository.NetworkRepository
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import javax.inject.Inject
 
 class PostRemoteMediator @Inject constructor(
     private val database: PostDatabase,
-    private val service: PostService,
+    private val postService: PostService,
     private val networkRepository: NetworkRepository
 ) : RemoteMediator<Int, PostDto>() {
 
-    private val remoteKeyDao = database.remoteKeyDao()
     private val postDao = database.postDao()
+    private val remoteKeyDao = database.remoteKeyDao()
 
     override suspend fun initialize(): InitializeAction {
-        // 초기 로드 시 로컬 DB에 데이터가 있으면 새로고침 스킵
-        return if (postDao.getCount() > 0) {
-            InitializeAction.SKIP_INITIAL_REFRESH
-        } else {
-            InitializeAction.LAUNCH_INITIAL_REFRESH
-        }
+        return InitializeAction.LAUNCH_INITIAL_REFRESH
     }
 
     override suspend fun load(
         loadType: LoadType,
         state: PagingState<Int, PostDto>
     ): MediatorResult {
+        Timber.d("LoadType: $loadType")
         try {
-            // 오프라인이고 새로고침이 아닌 경우 추가 로드 중단
-            val isOnline = networkRepository.observeNetworkConnection().first()
-            if (!isOnline && loadType != LoadType.REFRESH) {
-                return MediatorResult.Success(endOfPaginationReached = true)
+            if (!networkRepository.isNetworkAvailable()) {
+                return MediatorResult.Success(endOfPaginationReached = false)
+            }
+
+            if (loadType == LoadType.APPEND) {
+                Timber.d("APPEND delay")
+                delay(2000)
             }
 
             val page = when (loadType) {
                 LoadType.REFRESH -> {
-                    // 새로고침 시에는 동기화 후 첫 페이지만 로드
-                    synchronizeWithServer(state.config.pageSize)
-                    return MediatorResult.Success(endOfPaginationReached = false)
+                    val remoteKey = getRemoteKeyClosestToCurrentPosition(state)
+                    remoteKey?.nextPage?.minus(1) ?: 1
                 }
-                LoadType.PREPEND -> return MediatorResult.Success(true)
-                LoadType.APPEND -> remoteKeyDao.getNextKey().nextPage
+                LoadType.PREPEND -> {
+                    return MediatorResult.Success(endOfPaginationReached = true)
+                }
+                LoadType.APPEND -> {
+                    val remoteKey = getRemoteKeyForLastItem(state)
+                    Timber.d("APPEND RemoteKey: $remoteKey")
+                    val nextPage = remoteKey?.nextPage
+                        ?: return MediatorResult.Success(endOfPaginationReached = remoteKey != null)
+                    Timber.d("APPEND nextPage: $nextPage")
+                    nextPage
+                }
             }
 
-            val response = service.getPosts(page = page, size = state.config.pageSize)
-            val posts = response.data ?: emptyList()
+            val response = postService.getPosts(page = page, size = state.config.pageSize)
+            val serverPosts = response.data ?: emptyList()
+            Timber.d("Server response for page $page: total posts=${serverPosts.size}")
+            val endOfPaginationReached = serverPosts.isEmpty()
 
-            // DB 업데이트
+            val prevPage = if (page == 1) null else page - 1
+            val nextPage = if (endOfPaginationReached) null else page + 1
+
             database.withTransaction {
-                remoteKeyDao.upsert(RemoteKey(nextPage = page + 1))
-                postDao.insertAll(posts)
-            }
+                if (loadType == LoadType.REFRESH) {
+                    remoteKeyDao.deleteAll()
+                    postDao.deleteAll()
+                }
 
-            return MediatorResult.Success(endOfPaginationReached = posts.isEmpty())
+                // RemoteKey 생성 및 저장
+                val keys = serverPosts.map { post ->
+                    RemoteKey(
+                        id = post.id,
+                        prevPage = prevPage,
+                        nextPage = nextPage,
+                    )
+                }
+
+                remoteKeyDao.insertAll(remoteKeys = keys)
+                postDao.insertAll(posts = serverPosts)
+            }
+            return MediatorResult.Success(endOfPaginationReached = endOfPaginationReached)
         } catch (e: Exception) {
             return MediatorResult.Error(e)
         }
     }
 
-    private suspend fun synchronizeWithServer(pageSize: Int) {
-        try {
-            // 서버의 첫 페이지 데이터 가져오기
-            val response = service.getPosts(page = 1, size = pageSize)
-            val serverPosts = response.data ?: emptyList()
-            val serverPostIds = serverPosts.map { it.id }.toSet()
-
-            // 현재 로컬 DB의 모든 게시물 ID 가져오기
-            val localPostIds = postDao.getAllPostIds().toSet()
-
-            // 서버에 없는 게시물 찾기
-            val deletedPostIds = localPostIds - serverPostIds
-
-            database.withTransaction {
-                // 서버에 없는 게시물 삭제
-                deletedPostIds.forEach { postId ->
-                    postDao.deleteById(postId)
+    private suspend fun getRemoteKeyClosestToCurrentPosition(
+        state: PagingState<Int, PostDto>
+    ): RemoteKey? {
+        return state.anchorPosition?.let { position ->
+            state.closestItemToPosition(position)?.let {
+                database.withTransaction {
+                    remoteKeyDao.getRemoteKeyById(it.id)
                 }
-
-                // 새로운 데이터 저장
-                postDao.insertAll(serverPosts)
-                remoteKeyDao.deleteAll()
-                remoteKeyDao.upsert(RemoteKey(nextPage = 2))
             }
-        } catch (e: Exception) {
-            Timber.e(e)
-            throw e
         }
+    }
+
+    private suspend fun getRemoteKeyForLastItem(
+        state: PagingState<Int, PostDto>
+    ): RemoteKey? {
+        return state.pages.lastOrNull { it.data.isNotEmpty() }?.data?.lastOrNull()
+            ?.let {
+                database.withTransaction {
+                    remoteKeyDao.getRemoteKeyById(it.id)
+                }
+            }
     }
 }

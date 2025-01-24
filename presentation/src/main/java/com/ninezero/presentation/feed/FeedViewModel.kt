@@ -11,18 +11,18 @@ import com.ninezero.domain.model.Comment
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
-import com.ninezero.presentation.model.feed.PostModel
+import com.ninezero.presentation.model.feed.PostCardModel
 import com.ninezero.presentation.model.feed.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,75 +31,76 @@ class FeedViewModel @Inject constructor(
     private val feedUseCase: FeedUseCase,
     private val networkRepository: NetworkRepository
 ) : ViewModel(), ContainerHost<FeedState, FeedSideEffect> {
-    override val container: Container<FeedState, FeedSideEffect> =
-        container(initialState = FeedState())
+    override val container: Container<FeedState, FeedSideEffect> = container(initialState = FeedState())
+
+    private var isInitialLoad = true
 
     init {
         viewModelScope.launch {
+            networkRepository.observeNetworkConnection()
+                .collect { isOnline ->
+                    if (isOnline && !isInitialLoad) {
+                        load()
+                    }
+                }
+        }
+
+        viewModelScope.launch {
             load()
-            synchronizeData()
+            isInitialLoad = false
         }
     }
 
     private fun load() = intent {
-        when (val result = userUseCase.getMyUser()) {
-            is ApiResult.Success -> {
-                reduce { state.copy(myUserId = result.data.id) }
-            }
+        try {
+            val isOnline = networkRepository.isNetworkAvailable()
 
-            is ApiResult.Error.Unauthorized -> {
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-                postSideEffect(FeedSideEffect.NavigateToLogin)
-                return@intent
-            }
+            when (val result = feedUseCase.getPosts()) {
+                is ApiResult.Success -> {
+                    val posts = result.data
+                        .map { pagingData -> pagingData.map { it.toModel() } }
+                        .cachedIn(viewModelScope)
+                    reduce { state.copy(posts = posts, isRefreshing = false) }
 
-            is ApiResult.Error.NotFound -> {
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-                postSideEffect(FeedSideEffect.NavigateToLogin)
-                return@intent
+                    if (isOnline) {
+                        when (val userResult = userUseCase.getMyUser()) {
+                            is ApiResult.Success -> {
+                                reduce { state.copy(myUserId = userResult.data.id) }
+                            }
+                            is ApiResult.Error.Unauthorized -> {
+                                postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
+                                postSideEffect(FeedSideEffect.NavigateToLogin)
+                            }
+                            is ApiResult.Error.NotFound -> {
+                                postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
+                                postSideEffect(FeedSideEffect.NavigateToLogin)
+                            }
+                            is ApiResult.Error -> {
+                                postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
+                            }
+                        }
+                    } else {
+                        postSideEffect(FeedSideEffect.ShowSnackbar("네트워크 연결 오류"))
+                    }
+                }
+                is ApiResult.Error -> {
+                    reduce { state.copy(isRefreshing = false) }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
-
-            is ApiResult.Error -> {
-                reduce { state.copy(isRefresh = false) }
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-            }
-        }
-
-        when (val result = feedUseCase.getPosts()) {
-            is ApiResult.Success -> {
-                val posts = result.data
-                    .map { pagingData -> pagingData.map { it.toModel() } }
-                    .cachedIn(viewModelScope)
-
-                reduce { state.copy(posts = posts, isRefresh = false) }
-            }
-
-            is ApiResult.Error -> {
-                reduce { state.copy(isRefresh = false) }
-                postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
-            }
+        } catch (e: Exception) {
+            Timber.e(e)
+            reduce { state.copy(isRefreshing = false) }
         }
     }
 
     fun refresh() = intent {
-        reduce { state.copy(isRefresh = true) }
-        delay(600)
-
-        // 기존 캐시된 데이터 초기화
-        reduce {
-            state.copy(
-                posts = emptyFlow(),
-                deletedPostIds = emptySet(),
-                addedComments = emptyMap(),
-                deletedComments = emptyMap()
-            )
-        }
-
-        synchronizeData()
+        reduce { state.copy(isRefreshing = true) }
+        delay(2000)
         load()
     }
 
-    fun showOptionsSheet(post: PostModel) = intent {
+    fun showOptionsSheet(post: PostCardModel) = intent {
         reduce { state.copy(optionsSheetPost = post) }
     }
 
@@ -107,7 +108,7 @@ class FeedViewModel @Inject constructor(
         reduce { state.copy(optionsSheetPost = null) }
     }
 
-    fun showCommentsSheet(post: PostModel) = intent {
+    fun showCommentsSheet(post: PostCardModel) = intent {
         reduce { state.copy(commentsSheetPost = post) }
     }
 
@@ -115,7 +116,7 @@ class FeedViewModel @Inject constructor(
         reduce { state.copy(commentsSheetPost = null) }
     }
 
-    fun showDeletePostDialog(post: PostModel) = intent {
+    fun showDeletePostDialog(post: PostCardModel) = intent {
         reduce { state.copy(currentDialog = FeedDialog.DeletePost(post)) }
     }
 
@@ -127,7 +128,7 @@ class FeedViewModel @Inject constructor(
         reduce { state.copy(currentDialog = FeedDialog.Hidden) }
     }
 
-    fun getCombinedComments(post: PostModel): List<Comment> {
+    fun getCombinedComments(post: PostCardModel): List<Comment> {
         val currentState = container.stateFlow.value
         val initialComments = post.comments.toMutableList()
         val addedComments = currentState.addedComments[post.postId].orEmpty()
@@ -138,7 +139,7 @@ class FeedViewModel @Inject constructor(
             .filterNot { deletedCommentIds.contains(it.id) }
     }
 
-    fun onPostDelete(model: PostModel) = intent {
+    fun onPostDelete(model: PostCardModel) = intent {
         when (val result = feedUseCase.deletePost(model.postId)) {
             is ApiResult.Success -> {
                 reduce {
@@ -209,7 +210,6 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun handleError(error: ApiResult.Error) = intent {
-        delay(1000)
         reduce { state.copy(currentDialog = FeedDialog.Error(error.message)) }
         viewModelScope.launch {
             delay(2000)
@@ -217,33 +217,24 @@ class FeedViewModel @Inject constructor(
         }
         postSideEffect(FeedSideEffect.ShowSnackbar(error.message))
     }
-
-    private fun synchronizeData() = intent {
-        viewModelScope.launch {
-            val isOnline = networkRepository.observeNetworkConnection().first()
-            if (isOnline) {
-                feedUseCase.synchronizeData()
-            }
-        }
-    }
 }
 
 @Immutable
 data class FeedState(
     val myUserId: Long = -1L,
-    val posts: Flow<PagingData<PostModel>> = emptyFlow<PagingData<PostModel>>(),
+    val posts: Flow<PagingData<PostCardModel>> = emptyFlow<PagingData<PostCardModel>>(),
     val deletedPostIds: Set<Long> = emptySet(),
     val addedComments: Map<Long, List<Comment>> = emptyMap(),
     val deletedComments: Map<Long, List<Comment>> = emptyMap(),
-    val isRefresh: Boolean = false,
+    val isRefreshing: Boolean = false,
     val currentDialog: FeedDialog = FeedDialog.Hidden,
-    val optionsSheetPost: PostModel? = null,
-    val commentsSheetPost: PostModel? = null
+    val optionsSheetPost: PostCardModel? = null,
+    val commentsSheetPost: PostCardModel? = null
 )
 
 sealed interface FeedDialog {
     data object Hidden : FeedDialog
-    data class DeletePost(val post: PostModel) : FeedDialog
+    data class DeletePost(val post: PostCardModel) : FeedDialog
     data class DeleteComment(val postId: Long, val comment: Comment) : FeedDialog
     data class Error(val message: String) : FeedDialog
 }

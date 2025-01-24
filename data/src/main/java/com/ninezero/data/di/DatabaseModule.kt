@@ -24,7 +24,7 @@ object DatabaseModule {
         Room.databaseBuilder(
             context,
             PostDatabase::class.java,
-            "post_database"
+            "post_db"
         ).build()
 
     @Provides
