@@ -53,4 +53,13 @@
     <string name="error_network_unavailable">네트워크가 원활하지 않습니다</string>
     <string name="error_check_network_and_retry">네트워크 연결상태를 확인하거나\n잠시 후 다시 시도해주세요</string>
     <string name="error_load_data">피드를 불러오는데 실패했습니다</string>
+
+    <!-- Relative Time -->
+    <string name="just_now">방금 전</string>
+    <string name="minutes_ago">%d분 전</string>
+    <string name="hours_ago">%d시간 전</string>
+    <string name="days_ago">%d일 전</string>
+    <string name="weeks_ago">%d주 전</string>
+    <string name="months_ago">%d개월 전</string>
+    <string name="years_ago">%d년 전</string>
 </resources>

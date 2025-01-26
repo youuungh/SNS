@@ -101,10 +101,7 @@ class FeedUseCaseImpl @Inject constructor(
         text: String
     ): ApiResult<Long> {
         return try {
-            // 오프라인 상태 체크
-            if (!networkRepository.isNetworkAvailable()) {
-                return ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
-            }
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
 
             val commentParam = CommentParam(text)
             val response = postService.addComment(postId = postId, requestBody = commentParam)
@@ -120,10 +117,7 @@ class FeedUseCaseImpl @Inject constructor(
 
     override suspend fun deletePost(postId: Long): ApiResult<Long> {
         return try {
-            // 오프라인 상태 체크
-            if (!networkRepository.isNetworkAvailable()) {
-                return ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
-            }
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
 
             val response = postService.deletePost(id = postId)
             if (response.result == "SUCCESS") {
@@ -141,10 +135,7 @@ class FeedUseCaseImpl @Inject constructor(
         commentId: Long
     ): ApiResult<Long> {
         return try {
-            // 오프라인 상태 체크
-            if (!networkRepository.isNetworkAvailable()) {
-                return ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
-            }
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
 
             val response = postService.deleteComment(postId, commentId)
             if (response.result == "SUCCESS") {
@@ -154,6 +145,44 @@ class FeedUseCaseImpl @Inject constructor(
             }
         } catch (e: Exception) {
             e.handleNetworkException()
+        }
+    }
+
+    override suspend fun likePost(postId: Long): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val response = postService.likePost(postId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "좋아요 실패")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun unlikePost(postId: Long): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val response = postService.unlikePost(postId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "좋아요 취소 실패")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    private suspend fun checkNetwork(): ApiResult.Error.NetworkError? {
+        return if (!networkRepository.isNetworkAvailable()) {
+            ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
+        } else {
+            null
         }
     }
 }

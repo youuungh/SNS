@@ -65,4 +65,12 @@ class PostService @Inject constructor(
     suspend fun deleteComment(postId: Long, commentId: Long): CommonResponse<Long> {
         return client.delete("boards/$postId/comments/$commentId").body()
     }
+
+    suspend fun likePost(postId: Long): CommonResponse<Long> {
+        return client.post("boards/$postId/like-board").body()
+    }
+
+    suspend fun unlikePost(postId: Long): CommonResponse<Long> {
+        return client.delete("boards/$postId/like-board").body()
+    }
 }

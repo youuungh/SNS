@@ -4,6 +4,8 @@ import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -48,6 +51,7 @@ import com.ninezero.presentation.theme.snsSmallButtonDarkBackground
 import com.ninezero.presentation.theme.snsSmallButtonDarkText
 import com.ninezero.presentation.theme.snsSmallButtonLightBackground
 import com.ninezero.presentation.theme.snsSmallButtonLightText
+import com.ninezero.presentation.R
 
 enum class ButtonState { Pressed, Idle }
 
@@ -447,6 +451,123 @@ fun SNSTextButton(
         onClick = onClick,
         enabled = enabled
     )
+}
+
+@Composable
+fun LikeButton(
+    isLiked: Boolean,
+    likesCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = LocalTheme.current
+
+    Row(
+        modifier = modifier
+            .background(
+                color = if (isDarkTheme) snsSmallButtonDarkBackground else snsSmallButtonLightBackground,
+                shape = MaterialTheme.shapes.small
+            )
+            .clip(MaterialTheme.shapes.small)
+            .bounceClick()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(
+                id = if (isLiked) R.drawable.ic_heart_filled else R.drawable.ic_heart
+            ),
+            contentDescription = "like",
+            modifier = Modifier.size(24.dp),
+            tint = if (isDarkTheme) snsSmallButtonDarkText else snsSmallButtonLightText
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = likesCount.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Normal,
+            color = if (isDarkTheme) snsSmallButtonDarkText else snsSmallButtonLightText
+        )
+    }
+}
+
+@Composable
+fun CommentButton(
+    commentsCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = LocalTheme.current
+
+    Row(
+        modifier = modifier
+            .background(
+                color = if (isDarkTheme) snsSmallButtonDarkBackground else snsSmallButtonLightBackground,
+                shape = MaterialTheme.shapes.small
+            )
+            .clip(MaterialTheme.shapes.small)
+            .bounceClick()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_comment),
+            contentDescription = "comments",
+            modifier = Modifier.size(24.dp),
+            tint = if (isDarkTheme) snsSmallButtonDarkText else snsSmallButtonLightText
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = commentsCount.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Normal,
+            color = if (isDarkTheme) snsSmallButtonDarkText else snsSmallButtonLightText
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Composable
+fun PostButtonsPreview() {
+    SNSTheme {
+        Surface {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    LikeButton(
+                        isLiked = false,
+                        likesCount = 10,
+                        onClick = {}
+                    )
+                    LikeButton(
+                        isLiked = true,
+                        likesCount = 11,
+                        onClick = {}
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CommentButton(
+                        commentsCount = 10,
+                        onClick = {}
+                    )
+                    CommentButton(
+                        commentsCount = 11,
+                        onClick = {}
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Preview

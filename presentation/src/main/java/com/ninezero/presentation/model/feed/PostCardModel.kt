@@ -13,17 +13,23 @@ data class PostCardModel(
     val profileImageUrl: String?,
     val images: List<String>,
     val richTextState: RichTextState,
-    val comments: List<Comment>
+    val comments: List<Comment>,
+    val likesCount: Int,
+    val isLiked: Boolean,
+    val createdAt: String
 )
 
 fun Post.toModel(): PostCardModel {
     return PostCardModel(
-        userId = userId,
-        postId = id,
-        username = userName,
-        profileImageUrl = profileImageUrl,
-        images = images,
+        userId = this.userId,
+        postId = this.id,
+        username = this.userName,
+        profileImageUrl = this.profileImageUrl,
+        images = this.images,
         richTextState = RichTextState().apply { setHtml(this@toModel.content) },
-        comments = comments
+        comments = this.comments,
+        likesCount = this.likesCount,
+        isLiked = this.isLiked,
+        createdAt = this.createdAt
     )
 }

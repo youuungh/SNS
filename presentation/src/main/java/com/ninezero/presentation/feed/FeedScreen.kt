@@ -91,7 +91,7 @@ fun FeedScreen(
                 }
 
                 else -> {
-                    if (posts.itemCount == 0) {
+                    if (posts.itemCount == 0 && !isInit) {
                         EmptyFeedScreen()
                     } else {
                         LazyColumn(
@@ -121,8 +121,12 @@ fun FeedScreen(
                                             richTextState = post.richTextState,
                                             comments = viewModel.getCombinedComments(post),
                                             isOwner = post.userId == state.myUserId,
+                                            isLiked = state.isLiked[post.postId] ?: post.isLiked,
+                                            likesCount = state.likesCount[post.postId] ?: post.likesCount,
+                                            createdAt = post.createdAt,
                                             onOptionClick = { viewModel.showOptionsSheet(post) },
-                                            onCommentClick = { viewModel.showCommentsSheet(post) }
+                                            onCommentClick = { viewModel.showCommentsSheet(post) },
+                                            onLikeClick = { viewModel.onLikeClick(post.postId, post) }
                                         )
                                     }
                                 }

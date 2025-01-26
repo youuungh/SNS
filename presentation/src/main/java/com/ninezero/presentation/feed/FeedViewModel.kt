@@ -31,7 +31,8 @@ class FeedViewModel @Inject constructor(
     private val feedUseCase: FeedUseCase,
     private val networkRepository: NetworkRepository
 ) : ViewModel(), ContainerHost<FeedState, FeedSideEffect> {
-    override val container: Container<FeedState, FeedSideEffect> = container(initialState = FeedState())
+    override val container: Container<FeedState, FeedSideEffect> =
+        container(initialState = FeedState())
 
     private var isInitialLoad = true
 
@@ -60,6 +61,7 @@ class FeedViewModel @Inject constructor(
                     val posts = result.data
                         .map { pagingData -> pagingData.map { it.toModel() } }
                         .cachedIn(viewModelScope)
+
                     reduce { state.copy(posts = posts, isRefreshing = false) }
 
                     if (isOnline) {
@@ -67,14 +69,17 @@ class FeedViewModel @Inject constructor(
                             is ApiResult.Success -> {
                                 reduce { state.copy(myUserId = userResult.data.id) }
                             }
+
                             is ApiResult.Error.Unauthorized -> {
                                 postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
                                 postSideEffect(FeedSideEffect.NavigateToLogin)
                             }
+
                             is ApiResult.Error.NotFound -> {
                                 postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
                                 postSideEffect(FeedSideEffect.NavigateToLogin)
                             }
+
                             is ApiResult.Error -> {
                                 postSideEffect(FeedSideEffect.ShowSnackbar(userResult.message))
                             }
@@ -83,6 +88,7 @@ class FeedViewModel @Inject constructor(
                         postSideEffect(FeedSideEffect.ShowSnackbar("네트워크 연결 오류"))
                     }
                 }
+
                 is ApiResult.Error -> {
                     reduce { state.copy(isRefreshing = false) }
                     postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
@@ -193,6 +199,39 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun onLikeClick(postId: Long, post: PostCardModel) = intent {
+        val isLiked = state.isLiked[postId] ?: post.isLiked
+        val likesCount = state.likesCount[postId] ?: post.likesCount
+
+        if (isLiked) {
+            when (val result = feedUseCase.unlikePost(postId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isLiked = state.isLiked + (postId to false),
+                            likesCount = state.likesCount + (postId to likesCount - 1)
+                        )
+                    }
+                }
+
+                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+            }
+        } else {
+            when (val result = feedUseCase.likePost(postId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isLiked = state.isLiked + (postId to true),
+                            likesCount = state.likesCount + (postId to likesCount + 1)
+                        )
+                    }
+                }
+
+                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+            }
+        }
+    }
+
     private fun updateComments(
         postId: Long,
         comment: Comment,
@@ -226,6 +265,8 @@ data class FeedState(
     val deletedPostIds: Set<Long> = emptySet(),
     val addedComments: Map<Long, List<Comment>> = emptyMap(),
     val deletedComments: Map<Long, List<Comment>> = emptyMap(),
+    val isLiked: Map<Long, Boolean> = emptyMap(),
+    val likesCount: Map<Long, Int> = emptyMap(),
     val isRefreshing: Boolean = false,
     val currentDialog: FeedDialog = FeedDialog.Hidden,
     val optionsSheetPost: PostCardModel? = null,
