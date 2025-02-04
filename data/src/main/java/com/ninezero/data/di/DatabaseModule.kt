@@ -2,9 +2,12 @@ package com.ninezero.data.di
 
 import android.content.Context
 import androidx.room.Room
-import com.ninezero.data.db.PostDao
-import com.ninezero.data.db.PostDatabase
-import com.ninezero.data.db.RemoteKeyDao
+import com.ninezero.data.db.post.PostDao
+import com.ninezero.data.db.post.PostDatabase
+import com.ninezero.data.db.post.PostRemoteKeyDao
+import com.ninezero.data.db.user.UserDao
+import com.ninezero.data.db.user.UserDatabase
+import com.ninezero.data.db.user.UserRemoteKeyDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +18,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-
     @Provides
     @Singleton
     fun providePostDatabase(
@@ -29,13 +31,36 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideUserDatabase(
+        @ApplicationContext context: Context
+    ): UserDatabase =
+        Room.databaseBuilder(
+            context,
+            UserDatabase::class.java,
+            "user_db"
+        ).build()
+
+    @Provides
+    @Singleton
     fun providePostDao(database: PostDatabase): PostDao {
         return database.postDao()
     }
 
     @Provides
     @Singleton
-    fun provideRemoteKeyDao(database: PostDatabase): RemoteKeyDao {
-        return database.remoteKeyDao()
+    fun providePostRemoteKeyDao(database: PostDatabase): PostRemoteKeyDao {
+        return database.postRemoteKeyDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserDao(database: UserDatabase): UserDao {
+        return database.userDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserRemoteKeyDao(database: UserDatabase): UserRemoteKeyDao {
+        return database.userRemoteKeyDao()
     }
 }

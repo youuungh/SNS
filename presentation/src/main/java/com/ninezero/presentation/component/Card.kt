@@ -3,6 +3,8 @@ package com.ninezero.presentation.component
 import android.content.res.Configuration
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,17 +28,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.BasicRichText
 import com.ninezero.domain.model.Comment
 import com.ninezero.presentation.R
-import com.ninezero.presentation.theme.LocalTheme
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.util.formatRelativeTime
 
@@ -56,12 +63,8 @@ fun PostCard(
     onCommentClick: () -> Unit,
     onLikeClick: () -> Unit,
 ) {
-    val isDarkTheme = LocalTheme.current
-
     Surface {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             PostHeader(
                 isOwner = isOwner,
                 profileImageUrl = profileImageUrl,
@@ -226,6 +229,60 @@ fun HorizontalPagerIndicator(
     }
 }
 
+@Composable
+fun UserCard(
+    userId: Long,
+    username: String,
+    profileImagePath: String? = null,
+    isFollowing: Boolean,
+    onFollowClick: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.width(150.dp),
+        shape = MaterialTheme.shapes.extraSmall,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = 0.1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(
+                    model = profileImagePath,
+                    error = painterResource(id = R.drawable.user_placeholder),
+                    placeholder = painterResource(id = R.drawable.user_placeholder)
+                ),
+                contentDescription = "profile_image",
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .bounceClick(),
+                contentScale = ContentScale.Crop
+            )
+
+            Text(
+                text = username,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            SNSFollowingButton(
+                isFollowing = isFollowing,
+                onClick = { onFollowClick(userId) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp)
+            )
+        }
+    }
+}
+
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -259,6 +316,21 @@ private fun PostCardPreview() {
             onOptionClick = {},
             onCommentClick = {},
             onLikeClick = {}
+        )
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun UserCardPreview() {
+    SNSTheme {
+        UserCard(
+            userId = 1L,
+            username = "Username",
+            profileImagePath = null,
+            isFollowing = false,
+            onFollowClick = {}
         )
     }
 }

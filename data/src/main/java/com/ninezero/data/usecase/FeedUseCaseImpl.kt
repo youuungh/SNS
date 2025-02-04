@@ -88,9 +88,15 @@ class FeedUseCaseImpl @Inject constructor(
     private val postRepository: PostRepository,
     private val networkRepository: NetworkRepository
 ) : FeedUseCase {
-
     override suspend fun getPosts(): ApiResult<Flow<PagingData<Post>>> = try {
         ApiResult.Success(postRepository.getPosts())
+    } catch (e: Exception) {
+        Timber.e("Network Error: ${e.message}")
+        ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
+    }
+
+    override suspend fun getMyPosts(): ApiResult<Flow<PagingData<Post>>> = try {
+        ApiResult.Success(postRepository.getMyPosts())
     } catch (e: Exception) {
         Timber.e("Network Error: ${e.message}")
         ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")

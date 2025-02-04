@@ -51,4 +51,19 @@ class UserService @Inject constructor(
             setBody(param)
         }.body()
     }
+
+    suspend fun getAllUsers(page: Int, size: Int): CommonResponse<List<UserDto>> {
+        return client.get("users") {
+            parameter("page", page)
+            parameter("size", size)
+        }.body()
+    }
+
+    suspend fun followUser(userId: Long): CommonResponse<Long> {
+        return client.post("users/$userId/follow").body()
+    }
+
+    suspend fun unfollowUser(userId: Long): CommonResponse<Long> {
+        return client.delete("users/$userId/follow").body()
+    }
 }

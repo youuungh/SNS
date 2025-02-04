@@ -39,6 +39,12 @@ interface PostService {
 class PostService @Inject constructor(
     private val client: HttpClient
 ) {
+    suspend fun createPost(requestBody: Any): CommonResponse<Long> {
+        return client.post("boards") {
+            setBody(requestBody)
+        }.body()
+    }
+
     suspend fun getPosts(page: Int, size: Int): CommonResponse<List<PostDto>> {
         return client.get("boards") {
             parameter("page", page)
@@ -46,9 +52,10 @@ class PostService @Inject constructor(
         }.body()
     }
 
-    suspend fun createPost(requestBody: Any): CommonResponse<Long> {
-        return client.post("boards") {
-            setBody(requestBody)
+    suspend fun getMyPosts(page: Int, size: Int): CommonResponse<List<PostDto>> {
+        return client.get("boards/my-boards") {
+            parameter("page", page)
+            parameter("size", size)
         }.body()
     }
 

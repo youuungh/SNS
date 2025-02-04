@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -13,13 +12,11 @@ import androidx.room.withTransaction
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import com.ninezero.data.db.PostDatabase
-import com.ninezero.data.db.RemoteKey
+import com.ninezero.data.db.post.PostDatabase
 import com.ninezero.data.model.param.ContentParam
 import com.ninezero.data.model.param.PostParam
 import com.ninezero.data.model.parcel.PostParcel
 import com.ninezero.data.ktor.PostService
-import com.ninezero.domain.model.ACTION_POSTED
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.usecase.FileUseCase
 import dagger.assisted.Assisted

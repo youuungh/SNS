@@ -20,10 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.SNSTheme
 
@@ -56,16 +60,19 @@ fun SNSEditProfileImage(
     onClick: () -> Unit = {}
 ) {
     Box {
-        Image(
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .placeholder(R.drawable.user_placeholder)
+                .error(R.drawable.user_placeholder)
+                .crossfade(true)
+                .build(),
+            contentDescription = "profile_image",
             modifier = modifier
                 .clip(CircleShape)
                 .clickable { onClick() },
-            painter = rememberAsyncImagePainter(
-                model = imageUrl,
-                error = painterResource(id = R.drawable.user_placeholder),
-                placeholder = painterResource(id = R.drawable.user_placeholder)
-            ),
-            contentDescription = "profile_image",
             contentScale = ContentScale.Crop
         )
 

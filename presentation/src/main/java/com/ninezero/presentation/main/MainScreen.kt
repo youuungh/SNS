@@ -135,7 +135,6 @@ fun MainScreen(
             composable(MainRoute.BottomNavItem.Profile.route) {
                 ProfileScreen(
                     snackbarHostState = snackbarHostState,
-                    onNavigateToLogin = onNavigateToLogin,
                     onProfileImageChange = viewModel::load
                 )
             }

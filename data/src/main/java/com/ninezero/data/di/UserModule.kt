@@ -18,7 +18,6 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class UserModule {
-
     @Binds
     abstract fun bindUserUseCase(userUseCaseImpl: UserUseCaseImpl): UserUseCase
 

@@ -11,8 +11,8 @@ import com.ninezero.domain.model.Comment
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
-import com.ninezero.presentation.model.feed.PostCardModel
-import com.ninezero.presentation.model.feed.toModel
+import com.ninezero.presentation.model.PostCardModel
+import com.ninezero.presentation.model.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -31,8 +31,7 @@ class FeedViewModel @Inject constructor(
     private val feedUseCase: FeedUseCase,
     private val networkRepository: NetworkRepository
 ) : ViewModel(), ContainerHost<FeedState, FeedSideEffect> {
-    override val container: Container<FeedState, FeedSideEffect> =
-        container(initialState = FeedState())
+    override val container: Container<FeedState, FeedSideEffect> = container(initialState = FeedState())
 
     private var isInitialLoad = true
 
@@ -95,8 +94,8 @@ class FeedViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e)
             reduce { state.copy(isRefreshing = false) }
+            Timber.e(e)
         }
     }
 
@@ -123,15 +122,15 @@ class FeedViewModel @Inject constructor(
     }
 
     fun showDeletePostDialog(post: PostCardModel) = intent {
-        reduce { state.copy(currentDialog = FeedDialog.DeletePost(post)) }
+        reduce { state.copy(dialog = FeedDialog.DeletePost(post)) }
     }
 
     fun showDeleteCommentDialog(postId: Long, comment: Comment) = intent {
-        reduce { state.copy(currentDialog = FeedDialog.DeleteComment(postId, comment)) }
+        reduce { state.copy(dialog = FeedDialog.DeleteComment(postId, comment)) }
     }
 
     fun hideDialog() = intent {
-        reduce { state.copy(currentDialog = FeedDialog.Hidden) }
+        reduce { state.copy(dialog = FeedDialog.Hidden) }
     }
 
     fun getCombinedComments(post: PostCardModel): List<Comment> {
@@ -152,7 +151,7 @@ class FeedViewModel @Inject constructor(
                     state.copy(
                         deletedPostIds = state.deletedPostIds + model.postId,
                         optionsSheetPost = null,
-                        currentDialog = FeedDialog.Hidden
+                        dialog = FeedDialog.Hidden
                     )
                 }
                 load()
@@ -192,14 +191,14 @@ class FeedViewModel @Inject constructor(
         when (val result = feedUseCase.deleteComment(postId, comment.id)) {
             is ApiResult.Success -> {
                 updateComments(postId, comment, isDelete = true)
-                reduce { state.copy(currentDialog = FeedDialog.Hidden) }
+                reduce { state.copy(dialog = FeedDialog.Hidden) }
             }
 
             is ApiResult.Error -> handleError(result)
         }
     }
 
-    fun onLikeClick(postId: Long, post: PostCardModel) = intent {
+    fun handleLikeClick(postId: Long, post: PostCardModel) = intent {
         val isLiked = state.isLiked[postId] ?: post.isLiked
         val likesCount = state.likesCount[postId] ?: post.likesCount
 
@@ -249,10 +248,10 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun handleError(error: ApiResult.Error) = intent {
-        reduce { state.copy(currentDialog = FeedDialog.Error(error.message)) }
+        reduce { state.copy(dialog = FeedDialog.Error(error.message)) }
         viewModelScope.launch {
             delay(2000)
-            reduce { state.copy(currentDialog = FeedDialog.Hidden) }
+            reduce { state.copy(dialog = FeedDialog.Hidden) }
         }
         postSideEffect(FeedSideEffect.ShowSnackbar(error.message))
     }
@@ -268,7 +267,7 @@ data class FeedState(
     val isLiked: Map<Long, Boolean> = emptyMap(),
     val likesCount: Map<Long, Int> = emptyMap(),
     val isRefreshing: Boolean = false,
-    val currentDialog: FeedDialog = FeedDialog.Hidden,
+    val dialog: FeedDialog = FeedDialog.Hidden,
     val optionsSheetPost: PostCardModel? = null,
     val commentsSheetPost: PostCardModel? = null
 )

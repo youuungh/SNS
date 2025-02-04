@@ -62,5 +62,9 @@ val snsProgressDark = snsDarkAccent
 val snsCursorLight = snsDefault
 val snsCursorDark = snsDarkAccent
 
+// Error
+val errorLight = Color(0xFFDC3545) // 부드러운 빨간색
+val errorDark = Color(0xFFE57373)  // 어두운 테마용 밝은 빨간색
+
 //566789 회색계열 배경
 //151920 텍스트

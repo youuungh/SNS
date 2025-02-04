@@ -4,8 +4,9 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
-import com.ninezero.data.db.PostDatabase
-import com.ninezero.data.db.PostRemoteMediator
+import com.ninezero.data.db.post.mypost.MyPostRemoteMediator
+import com.ninezero.data.db.post.PostDatabase
+import com.ninezero.data.db.post.PostRemoteMediator
 import com.ninezero.data.model.dto.toDomain
 import com.ninezero.data.ktor.PostService
 import com.ninezero.domain.model.Post
@@ -19,7 +20,7 @@ class PostRepositoryImpl @Inject constructor(
     private val database: PostDatabase,
     private val postService: PostService,
     private val networkRepository: NetworkRepository
-) : PostRepository  {
+) : PostRepository {
     override fun getPosts(): Flow<PagingData<Post>> {
         return Pager(
             config = PagingConfig(
@@ -34,6 +35,23 @@ class PostRepositoryImpl @Inject constructor(
                 networkRepository = networkRepository
             ),
             pagingSourceFactory = { database.postDao().getAll() }
+        ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
+    }
+
+    override fun getMyPosts(): Flow<PagingData<Post>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = PAGE_SIZE,
+                initialLoadSize = PAGE_SIZE,
+                prefetchDistance = 1,
+                enablePlaceholders = false
+            ),
+            remoteMediator = MyPostRemoteMediator(
+                database = database,
+                postService = postService,
+                networkRepository = networkRepository
+            ),
+            pagingSourceFactory = { database.postDao().getMyAll() }
         ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
     }
 

@@ -24,7 +24,8 @@ private val DarkColorScheme = androidx.compose.material3.darkColorScheme(
     onBackground = snsDarkOnSurface,
     onSurface = snsDarkOnSurface,
     surfaceVariant = snsDarkSurface,
-    onSurfaceVariant = snsDarkOnSurface
+    onSurfaceVariant = snsDarkOnSurface,
+    error = errorDark
 )
 
 private val LightColorScheme = androidx.compose.material3.lightColorScheme(
@@ -39,7 +40,8 @@ private val LightColorScheme = androidx.compose.material3.lightColorScheme(
     onBackground = snsLightOnSurface, //Color(0xFF1C1B1F),
     onSurface = snsLightOnSurface, //Color(0xFF1C1B1F),
     surfaceVariant = Color.White,
-    onSurfaceVariant = snsLightOnSurface
+    onSurfaceVariant = snsLightOnSurface,
+    error = errorLight
 )
 
 @Composable

@@ -1,4 +1,4 @@
-package com.ninezero.data.db
+package com.ninezero.data.db.post
 
 import androidx.paging.LoadType
 import androidx.paging.PagingState
@@ -16,9 +16,8 @@ class PostRemoteMediator @Inject constructor(
     private val postService: PostService,
     private val networkRepository: NetworkRepository
 ) : RemoteMediator<Int, PostDto>() {
-
     private val postDao = database.postDao()
-    private val remoteKeyDao = database.remoteKeyDao()
+    private val remoteKeyDao = database.postRemoteKeyDao()
 
     override suspend fun initialize(): InitializeAction {
         return InitializeAction.LAUNCH_INITIAL_REFRESH
@@ -73,7 +72,7 @@ class PostRemoteMediator @Inject constructor(
 
                 // RemoteKey 생성 및 저장
                 val keys = serverPosts.map { post ->
-                    RemoteKey(
+                    PostRemoteKey(
                         id = post.id,
                         prevPage = prevPage,
                         nextPage = nextPage,
@@ -91,7 +90,7 @@ class PostRemoteMediator @Inject constructor(
 
     private suspend fun getRemoteKeyClosestToCurrentPosition(
         state: PagingState<Int, PostDto>
-    ): RemoteKey? {
+    ): PostRemoteKey? {
         return state.anchorPosition?.let { position ->
             state.closestItemToPosition(position)?.let {
                 database.withTransaction {
@@ -103,7 +102,7 @@ class PostRemoteMediator @Inject constructor(
 
     private suspend fun getRemoteKeyForLastItem(
         state: PagingState<Int, PostDto>
-    ): RemoteKey? {
+    ): PostRemoteKey? {
         return state.pages.lastOrNull { it.data.isNotEmpty() }?.data?.lastOrNull()
             ?.let {
                 database.withTransaction {

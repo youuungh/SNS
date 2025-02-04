@@ -24,11 +24,17 @@
     <string name="settings">설정</string>
     <string name="light_mode">밝은 모드</string>
     <string name="dark_mode">어두운 모드</string>
-
     <string name="id">아이디</string>
     <string name="username">닉네임</string>
     <string name="password">비밀번호</string>
     <string name="password_confirm">비밀번호 확인</string>
+    <string name="follow">팔로우</string>
+    <string name="following">팔로잉</string>
+    <string name="show_all">모두 보기</string>
+    <string name="post">게시물</string>
+    <string name="my_post">내 게시물</string>
+    <string name="follower">팔로워</string>
+    <string name="suggested_users">팔로우할 만한 사람</string>
 
     <!-- Labels -->
     <string name="label_no_account">계정이 없으신가요?</string>

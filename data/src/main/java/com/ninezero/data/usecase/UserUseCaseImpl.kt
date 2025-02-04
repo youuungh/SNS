@@ -1,5 +1,6 @@
 package com.ninezero.data.usecase
 
+import androidx.paging.PagingData
 import com.ninezero.data.UserDataStore
 import com.ninezero.data.model.param.LoginParam
 import com.ninezero.data.model.param.SignUpParam
@@ -9,8 +10,12 @@ import com.ninezero.data.ktor.UserService
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.model.User
+import com.ninezero.domain.repository.NetworkRepository
+import com.ninezero.domain.repository.UserRepository
 import com.ninezero.domain.usecase.FileUseCase
 import com.ninezero.domain.usecase.UserUseCase
+import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 import javax.inject.Inject
 
 /** retrofit
@@ -171,8 +176,10 @@ class UserUseCaseImpl @Inject constructor(
 
 class UserUseCaseImpl @Inject constructor(
     private val userService: UserService,
+    private val userRepository: UserRepository,
     private val fileUseCase: FileUseCase,
-    private val userDataStore: UserDataStore
+    private val userDataStore: UserDataStore,
+    private val networkRepository: NetworkRepository
 ) : UserUseCase {
     override suspend fun login(
         id: String,
@@ -235,12 +242,16 @@ class UserUseCaseImpl @Inject constructor(
     }
 
     override suspend fun getMyUser(): ApiResult<User> = try {
-        userService.getMyPage().let { response ->
-            when (response.result) {
-                "SUCCESS" -> response.data?.let {
-                    ApiResult.Success(it.toDomain())
-                }
-                else -> when (response.errorCode) {
+        if (networkRepository.isNetworkAvailable()) {
+            val response = userService.getMyPage()
+            if (response.result == "SUCCESS") {
+                response.data?.let {
+                    val user = it.toDomain()
+                    userRepository.updateMyUser(user)
+                    ApiResult.Success(user)
+                } ?: ApiResult.Error.ServerError("데이터가 없습니다")
+            } else {
+                when (response.errorCode) {
                     "AUTH_001" -> {
                         clearToken()
                         ApiResult.Error.Unauthorized
@@ -249,14 +260,20 @@ class UserUseCaseImpl @Inject constructor(
                         clearToken()
                         ApiResult.Error.NotFound
                     }
-                    else -> null
+                    else -> userRepository.getMyUser()?.let {
+                        ApiResult.Success(it)
+                    } ?: ApiResult.Error.ServerError(response.errorMessage ?: "사용자 정보를 가져오는데 실패했습니다")
                 }
-            } ?: ApiResult.Error.ServerError(
-                response.errorMessage ?: "사용자 정보를 가져오는데 실패했습니다"
-            )
+            }
+        } else {
+            userRepository.getMyUser()?.let {
+                ApiResult.Success(it)
+            } ?: ApiResult.Error.NetworkError("네트워크 연결을 확인해주세요")
         }
     } catch (e: Exception) {
-        e.handleNetworkException()
+        userRepository.getMyUser()?.let {
+            ApiResult.Success(it)
+        } ?: e.handleNetworkException()
     }
 
     override suspend fun setMyUser(
@@ -277,6 +294,11 @@ class UserUseCaseImpl @Inject constructor(
 
             val response = userService.patchMyPage(param)
             if (response.result == "SUCCESS") {
+                val updatedUser = currentUser.copy(
+                    userName = userName ?: currentUser.userName,
+                    profileImagePath = profileImagePath ?: currentUser.profileImagePath
+                )
+                userRepository.updateMyUser(updatedUser)
                 ApiResult.Success(Unit)
             } else {
                 ApiResult.Error.ServerError(response.errorMessage ?: "프로필 업데이트에 실패했습니다")
@@ -301,9 +323,54 @@ class UserUseCaseImpl @Inject constructor(
         }
     }
 
+    override suspend fun getAllUsers(): ApiResult<Flow<PagingData<User>>> = try {
+        ApiResult.Success(userRepository.getAllUsers())
+    } catch (e: Exception) {
+        Timber.e("Network Error: ${e.message}")
+        ApiResult.Error.NetworkError("유저 목록을 불러오는데 실패했습니다")
+    }
+
+    override suspend fun followUser(userId: Long): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val response = userService.followUser(userId = userId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "팔로우에 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun unfollowUser(userId: Long): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val response = userService.unfollowUser(userId = userId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "언팔로우에 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
     override suspend fun updateOnboardingStatus(isCompleted: Boolean) {
         userDataStore.updateOnboardingStatus(isCompleted)
     }
 
     override suspend fun hasCompletedOnboarding(): Boolean = userDataStore.hasCompletedOnboarding()
+
+    private suspend fun checkNetwork(): ApiResult.Error.NetworkError? {
+        return if (!networkRepository.isNetworkAvailable()) {
+            ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
+        } else {
+            null
+        }
+    }
 }

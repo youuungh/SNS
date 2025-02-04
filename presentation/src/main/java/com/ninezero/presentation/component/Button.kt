@@ -6,30 +6,11 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -348,6 +329,50 @@ fun DefaultButton(
 }
 
 @Composable
+fun DefaultAccentButton(
+    text: String,
+    onClick: () -> Unit,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    @DrawableRes icon: Int? = null,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = contentColor
+        ),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .bounceClick()
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            icon?.let {
+                Icon(
+                    painter = painterResource(id = it),
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor
+            )
+        }
+    }
+}
+
+@Composable
 fun AdditionalButton(
     text: String,
     onClick: () -> Unit,
@@ -425,12 +450,14 @@ fun SNSIconButton(
 fun SNSTextButton(
     text: String,
     onClick: () -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     TextButton(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier
     ) {
         Text(
             text = text,
@@ -524,6 +551,40 @@ fun CommentButton(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Normal,
             color = if (isDarkTheme) snsSmallButtonDarkText else snsSmallButtonLightText
+        )
+    }
+}
+
+@Composable
+fun SNSFollowingButton(
+    isFollowing: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isFollowing) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary,
+            contentColor = if (isFollowing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        border = if (isFollowing) BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.primary
+        ) else null,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = modifier
+            .height(28.dp)
+            .bounceClick(),
+    ) {
+        Text(
+            text = stringResource(id = if (isFollowing) R.string.following else R.string.follow),
+            style = MaterialTheme.typography.labelLarge
         )
     }
 }
@@ -628,7 +689,21 @@ private fun SNSButtonPreview() {
                     text = "Retry",
                     onClick = {}
                 )
+                Row {
+                    SNSFollowingButton(
+                        isFollowing = false,
+                        onClick = {}
+                    )
+                    SNSFollowingButton(
+                        isFollowing = true,
+                        onClick = {}
+                    )
+                }
                 DefaultButton(
+                    text = "Button Text",
+                    onClick = {}
+                )
+                DefaultAccentButton(
                     text = "Button Text",
                     onClick = {}
                 )
@@ -642,16 +717,18 @@ private fun SNSButtonPreview() {
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "close"
                 )
-                SNSTextButton(
-                    text = "클릭",
-                    onClick = {},
-                    enabled = true
-                )
-                SNSTextButton(
-                    text = "클릭",
-                    onClick = {},
-                    enabled = false
-                )
+                Row {
+                    SNSTextButton(
+                        text = "클릭",
+                        onClick = {},
+                        enabled = true
+                    )
+                    SNSTextButton(
+                        text = "클릭",
+                        onClick = {},
+                        enabled = false
+                    )
+                }
             }
         }
     }

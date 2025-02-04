@@ -15,7 +15,7 @@ import com.ninezero.presentation.component.DeleteCommentDialog
 import com.ninezero.presentation.component.DeletePostDialog
 import com.ninezero.presentation.component.AppendEnd
 import com.ninezero.presentation.component.ErrorDialog
-import com.ninezero.presentation.component.LoadingProgress
+import com.ninezero.presentation.component.PageLoadingProgress
 import com.ninezero.presentation.component.NetworkErrorScreen
 import com.ninezero.presentation.component.AppendError
 import com.ninezero.presentation.component.EmptyFeedScreen
@@ -115,7 +115,7 @@ fun FeedScreen(
                                     if (!state.deletedPostIds.contains(post.postId)) {
                                         PostCard(
                                             postId = post.postId,
-                                            username = post.username,
+                                            username = post.userName,
                                             profileImageUrl = post.profileImageUrl,
                                             images = post.images,
                                             richTextState = post.richTextState,
@@ -126,7 +126,7 @@ fun FeedScreen(
                                             createdAt = post.createdAt,
                                             onOptionClick = { viewModel.showOptionsSheet(post) },
                                             onCommentClick = { viewModel.showCommentsSheet(post) },
-                                            onLikeClick = { viewModel.onLikeClick(post.postId, post) }
+                                            onLikeClick = { viewModel.handleLikeClick(post.postId, post) }
                                         )
                                     }
                                 }
@@ -136,7 +136,7 @@ fun FeedScreen(
                                 when (val append = posts.loadState.append) {
                                     is LoadState.Loading -> {
                                         if (posts.loadState.refresh !is LoadState.Loading) {
-                                            LoadingProgress()
+                                            PageLoadingProgress()
                                         }
                                     }
 
@@ -169,13 +169,13 @@ fun FeedScreen(
         }
     }
 
-    when (state.currentDialog) {
+    when (state.dialog) {
         is FeedDialog.DeletePost -> {
             DeletePostDialog(
                 openDialog = true,
                 onDismiss = { viewModel.hideDialog() },
                 onConfirm = {
-                    viewModel.onPostDelete(state.currentDialog.post)
+                    viewModel.onPostDelete(state.dialog.post)
                     viewModel.hideDialog()
                 }
             )
@@ -187,8 +187,8 @@ fun FeedScreen(
                 onDismiss = { viewModel.hideDialog() },
                 onConfirm = {
                     viewModel.onDeleteComment(
-                        state.currentDialog.postId,
-                        state.currentDialog.comment
+                        state.dialog.postId,
+                        state.dialog.comment
                     )
                     viewModel.hideDialog()
                 }
@@ -197,7 +197,7 @@ fun FeedScreen(
 
         is FeedDialog.Error -> {
             ErrorDialog(
-                message = state.currentDialog.message,
+                message = state.dialog.message,
                 onDismiss = { viewModel.hideDialog() }
             )
         }

@@ -3,6 +3,7 @@ package com.ninezero.presentation.setting
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import com.ninezero.presentation.auth.AuthActivity
 import com.ninezero.presentation.base.BaseActivity
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -11,7 +12,11 @@ class SettingActivity : BaseActivity() {
     @Composable
     override fun Content() {
         SettingScreen(
-            onNavigateToBack = { finish() }
+            onNavigateToBack = { finish() },
+            onNavigateToLogin = {
+                startActivity(Intent(this, AuthActivity::class.java))
+                finishAffinity()
+            }
         )
     }
 

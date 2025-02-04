@@ -1,4 +1,4 @@
-package com.ninezero.presentation.model.feed
+package com.ninezero.presentation.model
 
 import androidx.compose.runtime.Immutable
 import com.mohamedrejeb.richeditor.model.RichTextState
@@ -9,7 +9,7 @@ import com.ninezero.domain.model.Post
 data class PostCardModel(
     val userId: Long,
     val postId: Long,
-    val username: String,
+    val userName: String,
     val profileImageUrl: String?,
     val images: List<String>,
     val richTextState: RichTextState,
@@ -23,7 +23,7 @@ fun Post.toModel(): PostCardModel {
     return PostCardModel(
         userId = this.userId,
         postId = this.id,
-        username = this.userName,
+        userName = this.userName,
         profileImageUrl = this.profileImageUrl,
         images = this.images,
         richTextState = RichTextState().apply { setHtml(this@toModel.content) },

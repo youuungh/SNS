@@ -6,4 +6,5 @@ import kotlinx.coroutines.flow.Flow
 
 interface PostRepository {
     fun getPosts(): Flow<PagingData<Post>>
+    fun getMyPosts(): Flow<PagingData<Post>>
 }
