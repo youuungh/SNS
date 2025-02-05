@@ -15,10 +15,9 @@ import com.ninezero.presentation.component.DeleteCommentDialog
 import com.ninezero.presentation.component.DeletePostDialog
 import com.ninezero.presentation.component.AppendEnd
 import com.ninezero.presentation.component.ErrorDialog
-import com.ninezero.presentation.component.PageLoadingProgress
-import com.ninezero.presentation.component.NetworkErrorScreen
 import com.ninezero.presentation.component.AppendError
 import com.ninezero.presentation.component.EmptyFeedScreen
+import com.ninezero.presentation.component.LoadingProgress
 import com.ninezero.presentation.component.PostCard
 import com.ninezero.presentation.component.PullToRefreshLayout
 import com.ninezero.presentation.component.SNSSurface
@@ -31,7 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
-import timber.log.Timber
 
 @Composable
 fun FeedScreen(
@@ -80,14 +78,9 @@ fun FeedScreen(
         ) {
             when (posts.loadState.refresh) {
                 is LoadState.Loading -> {
-                    Timber.d("Refresh LoadState: Loading")
                     if (isInit && !state.isRefreshing) {
                         repeat(3) { ShimmerPostCards() }
                     }
-                }
-
-                is LoadState.Error -> {
-                    NetworkErrorScreen(onRetry = { posts.refresh() })
                 }
 
                 else -> {
@@ -136,7 +129,7 @@ fun FeedScreen(
                                 when (val append = posts.loadState.append) {
                                     is LoadState.Loading -> {
                                         if (posts.loadState.refresh !is LoadState.Loading) {
-                                            PageLoadingProgress()
+                                            LoadingProgress()
                                         }
                                     }
 

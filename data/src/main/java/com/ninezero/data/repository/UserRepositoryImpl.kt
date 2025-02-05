@@ -29,7 +29,7 @@ class UserRepositoryImpl @Inject constructor(
                 pageSize = PAGE_SIZE,
                 initialLoadSize = PAGE_SIZE,
                 prefetchDistance = 1,
-                enablePlaceholders = false
+                enablePlaceholders = true
             ),
             remoteMediator = UserRemoteMediator(
                 database = database,

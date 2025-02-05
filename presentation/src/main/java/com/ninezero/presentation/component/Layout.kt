@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -126,25 +127,26 @@ fun PullToRefreshLayout(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = 12.dp)
                 .zIndex(0f),
             contentAlignment = Alignment.TopCenter
         ) {
             if (refreshing || offsetY > 0f) {
                 if (refreshing) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 1.dp,
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f),
-                        trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                        trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                     )
                 } else {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        strokeWidth = 2.dp,
+                        progress = { progress },
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 1.dp,
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f),
                         trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                        progress = { progress }
+                        strokeCap = StrokeCap.Round
                     )
                 }
             }

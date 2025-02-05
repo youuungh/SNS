@@ -78,6 +78,10 @@ fun MainScreen(
         onResult = permissionHandler::handlePermissionResult
     )
 
+    LaunchedEffect(permissionLauncher) {
+        permissionHandler.setPermissionLauncher(permissionLauncher)
+    }
+
     val title = when (currentRoute) {
         MainRoute.BottomNavItem.Feed.route -> stringResource(R.string.feed)
         MainRoute.BottomNavItem.Profile.route -> stringResource(R.string.profile)
@@ -149,10 +153,20 @@ private class PermissionHandler(
     private val snackbarHostState: SnackbarHostState,
     private val onPermissionGranted: () -> Unit
 ) {
-    private val requiredPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    private val notificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        android.Manifest.permission.POST_NOTIFICATIONS
+    } else null
+
+    private val imagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         android.Manifest.permission.READ_MEDIA_IMAGES
     } else {
         android.Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+
+    private lateinit var permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>
+
+    fun setPermissionLauncher(launcher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>) {
+        permissionLauncher = launcher
     }
 
     private fun navigateToSettings() {
@@ -175,44 +189,61 @@ private class PermissionHandler(
     fun checkAndRequestPermissions(permissionLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>) {
         if (activity == null) return
 
+        val permissionsToRequest = mutableListOf<String>()
+
+        // 알림 권한 체크
+        if (notificationPermission != null && !isPermissionGranted(notificationPermission)) {
+            permissionsToRequest.add(notificationPermission)
+        }
+
+        // 이미지 권한 체크
+        if (!isPermissionGranted(imagePermission)) {
+            permissionsToRequest.add(imagePermission)
+        }
+
         when {
-            isPermissionGranted() -> onPermissionGranted()
-            !shouldShowRationale() -> {
-                if (isFirstTimeRequest()) {
-                    permissionLauncher.launch(arrayOf(requiredPermission))
+            permissionsToRequest.isEmpty() -> onPermissionGranted()
+            !shouldShowRationale(imagePermission) -> {
+                if (isFirstTimeRequest(imagePermission)) {
+                    permissionLauncher.launch(permissionsToRequest.toTypedArray())
                 } else {
                     scope.launch { showSettingsSnackbar() }
                 }
             }
-            else -> permissionLauncher.launch(arrayOf(requiredPermission))
+            else -> permissionLauncher.launch(permissionsToRequest.toTypedArray())
         }
     }
 
     fun handlePermissionResult(permissionsResult: Map<String, Boolean>) {
-        val isGranted = permissionsResult[requiredPermission] == true
-        if (isGranted) {
+        val allGranted = permissionsResult.all { it.value }
+
+        if (allGranted) {
             onPermissionGranted()
         } else {
-            val isPermanentlyDenied = !activity?.shouldShowRequestPermissionRationale(requiredPermission)!!
-            if (isPermanentlyDenied) {
+            // 어떤 권한이라도 영구적으로 거부되었는지 확인
+            val anyPermanentlyDenied = permissionsResult.any { (permission, granted) ->
+                !granted && !activity?.shouldShowRequestPermissionRationale(permission)!!
+            }
+
+            if (anyPermanentlyDenied) {
                 scope.launch { showSettingsSnackbar() }
             } else {
                 scope.launch {
-                    snackbarHostState.showSnackbar("이미지를 불러오기 위해 권한이 필요합니다")
+                    snackbarHostState.showSnackbar("앱 사용을 위해 모든 권한이 필요합니다")
                 }
             }
         }
     }
 
-    private fun isPermissionGranted(): Boolean =
-        ContextCompat.checkSelfPermission(context, requiredPermission) ==
+    private fun isPermissionGranted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) ==
                 PackageManager.PERMISSION_GRANTED
 
-    private fun shouldShowRationale(): Boolean =
-        activity?.shouldShowRequestPermissionRationale(requiredPermission) == true
+    private fun shouldShowRationale(permission: String): Boolean =
+        activity?.shouldShowRequestPermissionRationale(permission) == true
 
-    private fun isFirstTimeRequest(): Boolean =
-        ContextCompat.checkSelfPermission(context, requiredPermission) ==
+    private fun isFirstTimeRequest(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) ==
                 PackageManager.PERMISSION_DENIED
 }
 

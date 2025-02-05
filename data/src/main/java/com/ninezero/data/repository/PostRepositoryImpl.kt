@@ -42,9 +42,9 @@ class PostRepositoryImpl @Inject constructor(
         return Pager(
             config = PagingConfig(
                 pageSize = PAGE_SIZE,
-                initialLoadSize = PAGE_SIZE,
-                prefetchDistance = 1,
-                enablePlaceholders = false
+                initialLoadSize = PAGE_SIZE * 2,
+                prefetchDistance = 2,
+                enablePlaceholders = true
             ),
             remoteMediator = MyPostRemoteMediator(
                 database = database,
@@ -56,6 +56,6 @@ class PostRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        const val PAGE_SIZE = 10
+        const val PAGE_SIZE = 20
     }
 }

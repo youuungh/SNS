@@ -121,12 +121,12 @@ class PostWorker @AssistedInject constructor(
 
 @HiltWorker
 class PostWorker @AssistedInject constructor(
-    @Assisted private val appContext: Context,
+    @Assisted private val context: Context,
     @Assisted private val params: WorkerParameters,
     private val fileUseCase: FileUseCase,
     private val postService: PostService,
     private val database: PostDatabase
-) : CoroutineWorker(appContext.applicationContext, params) {
+) : CoroutineWorker(context.applicationContext, params) {
 
     companion object {
         const val CHANNEL_ID = "게시글 업로드"
@@ -173,12 +173,12 @@ class PostWorker @AssistedInject constructor(
         ).apply {
             description = "백그라운드에서 게시물을 업로드합니다"
         }
-        val notificationManager = appContext.getSystemService(NotificationManager::class.java)
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
     }
 
     private fun createNotification(): Notification {
-        return NotificationCompat.Builder(appContext, CHANNEL_ID)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_upload)
             .setContentTitle("게시물 업로드")
             .setContentText("게시물을 업로드하는 중입니다...")
@@ -215,7 +215,6 @@ class PostWorker @AssistedInject constructor(
 
         val response = postService.createPost(postParam)
         if (response.result == "SUCCESS") {
-            // DB 새 게시물 추가
             database.withTransaction {
                 val posts = postService.getPosts(page = 1, size = 1).data
                 if (posts?.isNotEmpty() == true) {
@@ -223,7 +222,7 @@ class PostWorker @AssistedInject constructor(
                 }
             }
 
-//            appContext.sendBroadcast(
+//            context.sendBroadcast(
 //                Intent(ACTION_POSTED).apply { setPackage(appContext.packageName) }
 //            )
         } else {

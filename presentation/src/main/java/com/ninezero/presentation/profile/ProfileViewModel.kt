@@ -88,17 +88,6 @@ class ProfileViewModel @Inject constructor(
 
                             is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
                         }
-
-                        when (val result = feedUseCase.getMyPosts()) {
-                            is ApiResult.Success -> {
-                                val myPosts = result.data
-                                    .cachedIn(viewModelScope)
-
-                                reduce { state.copy(myPosts = myPosts) }
-                            }
-
-                            is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
-                        }
                     } else {
                         postSideEffect(ProfileSideEffect.ShowSnackbar("네트워크 연결 오류"))
                     }
@@ -116,6 +105,17 @@ class ProfileViewModel @Inject constructor(
                     reduce { state.copy(isLoading = false, isRefreshing = false) }
                     postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
                 }
+            }
+
+            when (val result = feedUseCase.getMyPosts()) {
+                is ApiResult.Success -> {
+                    val myPosts = result.data
+                        .cachedIn(viewModelScope)
+
+                    reduce { state.copy(myPosts = myPosts) }
+                }
+
+                is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
             }
         } catch (e: Exception) {
             reduce { state.copy(isLoading = false, isRefreshing = false) }
