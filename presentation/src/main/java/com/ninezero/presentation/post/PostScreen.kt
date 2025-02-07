@@ -140,10 +140,7 @@ private fun PostScreenPreview() {
             },
             modifier = Modifier.fillMaxSize()
         ) {
-            SNSSurface(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
+            SNSSurface(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

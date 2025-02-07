@@ -292,7 +292,7 @@ class UserUseCaseImpl @Inject constructor(
                 extraUserInfo = ""
             )
 
-            val response = userService.patchMyPage(param)
+            val response = userService.updateMyPage(param)
             if (response.result == "SUCCESS") {
                 val updatedUser = currentUser.copy(
                     userName = userName ?: currentUser.userName,

@@ -46,7 +46,7 @@ class UserService @Inject constructor(
         return client.get("users/my-page").body()
     }
 
-    suspend fun patchMyPage(param: UpdateMyInfoParam): CommonResponse<Long> {
+    suspend fun updateMyPage(param: UpdateMyInfoParam): CommonResponse<Long> {
         return client.patch("users/my-page") {
             setBody(param)
         }.body()

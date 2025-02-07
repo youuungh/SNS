@@ -22,9 +22,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +55,16 @@ fun DetailScaffold(
         title != null -> title
         titleRes != null -> context.getString(titleRes)
         else -> null
+    }
+
+    var hasBottomBar by remember { mutableStateOf(false) }
+
+    val wrappedBottomBar: @Composable () -> Unit = {
+        Box(
+            modifier = Modifier.onGloballyPositioned { hasBottomBar = true }
+        ) {
+            bottomBar()
+        }
     }
 
     Scaffold(
@@ -89,7 +104,7 @@ fun DetailScaffold(
                 )
             }
         },
-        bottomBar = bottomBar,
+        bottomBar = wrappedBottomBar,
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0)
     ) { paddingValues ->
@@ -104,7 +119,15 @@ fun DetailScaffold(
             snackbarHostState?.let {
                 SNSSnackbar(
                     snackbarHostState = it,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .then(
+                            if (hasBottomBar) {
+                                Modifier.padding(bottom = 64.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
 

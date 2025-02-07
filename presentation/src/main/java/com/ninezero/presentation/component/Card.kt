@@ -57,19 +57,23 @@ fun PostCard(
     comments: List<Comment>,
     isOwner: Boolean,
     isLiked: Boolean,
+    isFollowing: Boolean,
     likesCount: Int,
     createdAt: String,
     onOptionClick: () -> Unit,
     onCommentClick: () -> Unit,
     onLikeClick: () -> Unit,
+    onFollowClick: () -> Unit,
 ) {
     Surface {
         Column(modifier = Modifier.fillMaxWidth()) {
             PostHeader(
-                isOwner = isOwner,
-                profileImageUrl = profileImageUrl,
                 username = username,
-                onOptionClick = onOptionClick
+                profileImageUrl = profileImageUrl,
+                isOwner = isOwner,
+                isFollowing = isFollowing,
+                onOptionClick = onOptionClick,
+                onFollowClick = onFollowClick
             )
 
             if (images.isNotEmpty()) {
@@ -309,13 +313,15 @@ private fun PostCardPreview() {
                 )
             },
             comments = emptyList(),
-            isOwner = true,
+            isOwner = false,
             isLiked = false,
+            isFollowing = false,
             likesCount = 100,
             createdAt = "2025-01-25T17:14:54.153",
             onOptionClick = {},
             onCommentClick = {},
-            onLikeClick = {}
+            onLikeClick = {},
+            onFollowClick = {}
         )
     }
 }

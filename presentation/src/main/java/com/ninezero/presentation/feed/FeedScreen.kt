@@ -24,6 +24,7 @@ import com.ninezero.presentation.component.SNSSurface
 import com.ninezero.presentation.component.ShimmerPostCards
 import com.ninezero.presentation.component.TopFAB
 import com.ninezero.presentation.component.bottomsheet.CommentsBottomSheet
+import com.ninezero.presentation.component.bottomsheet.EditPostBottomSheet
 import com.ninezero.presentation.component.bottomsheet.OptionsBottomSheet
 import com.ninezero.presentation.util.onScroll
 import kotlinx.coroutines.delay
@@ -114,12 +115,14 @@ fun FeedScreen(
                                             richTextState = post.richTextState,
                                             comments = viewModel.getCombinedComments(post),
                                             isOwner = post.userId == state.myUserId,
-                                            isLiked = state.isLiked[post.postId] ?: post.isLiked,
                                             likesCount = state.likesCount[post.postId] ?: post.likesCount,
+                                            isLiked = state.isLiked[post.postId] ?: post.isLiked,
+                                            isFollowing = state.isFollowing[post.userId] ?: post.isFollowing,
                                             createdAt = post.createdAt,
                                             onOptionClick = { viewModel.showOptionsSheet(post) },
                                             onCommentClick = { viewModel.showCommentsSheet(post) },
-                                            onLikeClick = { viewModel.handleLikeClick(post.postId, post) }
+                                            onLikeClick = { viewModel.handleLikeClick(post.postId, post) },
+                                            onFollowClick = { viewModel.handleFollowClick(post.userId, post) }
                                         )
                                     }
                                 }
@@ -205,6 +208,10 @@ fun FeedScreen(
             onDelete = {
                 viewModel.showDeletePostDialog(post)
                 viewModel.hideOptionsSheet()
+            },
+            onEdit = {
+                viewModel.showEditSheet(post)
+                viewModel.hideOptionsSheet()
             }
         )
     }
@@ -220,6 +227,18 @@ fun FeedScreen(
                 viewModel.showDeleteCommentDialog(post.postId, comment)
             },
             onCommentSend = { text -> viewModel.onCommentSend(post.postId, text) }
+        )
+    }
+
+    state.editSheetPost?.let { post ->
+        EditPostBottomSheet(
+            showBottomSheet = true,
+            post = post,
+            isEditing = state.isEditing,
+            onDismiss = { viewModel.hideEditSheet() },
+            onSave = { content, images ->
+                viewModel.onPostEdit(post.postId, content, images)
+            }
         )
     }
 }

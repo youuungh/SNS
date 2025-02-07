@@ -88,9 +88,7 @@ class PostUseCaseImpl @Inject constructor(
             content = content,
             images = images.map { ImageParcel.fromImage(it) }
         )
-
         val postParcelJson = Json.encodeToString(postParcel)
-
         val workRequest = OneTimeWorkRequestBuilder<PostWorker>()
             .setInputData(
                 workDataOf(PostParcel::class.java.simpleName to postParcelJson)

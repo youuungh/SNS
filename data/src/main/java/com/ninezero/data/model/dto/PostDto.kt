@@ -20,7 +20,8 @@ data class PostDto(
     val createUserProfileImagePath: String,
     val comments: List<CommentDto>,
     val likesCount: Int,
-    val isLiked: Boolean
+    val isLiked: Boolean,
+    val isFollowing: Boolean
 )
 
 fun PostDto.toDomain(): Post {
@@ -36,6 +37,7 @@ fun PostDto.toDomain(): Post {
         comments = this.comments.map { it.toDomain() },
         likesCount = this.likesCount,
         isLiked = this.isLiked,
+        isFollowing = this.isFollowing,
         createdAt = this.createdAt
     )
 }

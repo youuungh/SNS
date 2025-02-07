@@ -5,7 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -64,7 +63,6 @@ import com.ninezero.presentation.component.UserCard
 import com.ninezero.presentation.component.bounceClick
 import com.ninezero.presentation.model.UserCardModel
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProfileScreen(
     snackbarHostState: SnackbarHostState,

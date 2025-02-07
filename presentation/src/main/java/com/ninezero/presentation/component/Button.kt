@@ -7,6 +7,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -33,6 +35,7 @@ import com.ninezero.presentation.theme.snsSmallButtonDarkText
 import com.ninezero.presentation.theme.snsSmallButtonLightBackground
 import com.ninezero.presentation.theme.snsSmallButtonLightText
 import com.ninezero.presentation.R
+import com.ninezero.presentation.theme.snsFollowDefault
 
 enum class ButtonState { Pressed, Idle }
 
@@ -447,6 +450,40 @@ fun SNSIconButton(
 }
 
 @Composable
+fun SNSIconToggleButton(
+    onClick: () -> Unit,
+    icon: Painter,
+    isActive: Boolean = false,
+    modifier: Modifier = Modifier,
+    iconSize: Int = 20,
+    buttonSize: Int = 32,
+) {
+    FilledIconButton(
+        onClick = onClick,
+        modifier = modifier.size(buttonSize.dp),
+        shape = CircleShape,
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = if (isActive) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+            },
+            contentColor = if (isActive) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    ) {
+        Icon(
+            painter = icon,
+            contentDescription = null,
+            modifier = Modifier.size(iconSize.dp)
+        )
+    }
+}
+
+@Composable
 fun SNSTextButton(
     text: String,
     onClick: () -> Unit,
@@ -589,6 +626,50 @@ fun SNSFollowingButton(
     }
 }
 
+@Composable
+fun SNSDefaultFollowingButton(
+    isFollowing: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = LocalTheme.current
+
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = when {
+                isFollowing -> MaterialTheme.colorScheme.surface
+                isDarkTheme -> snsFollowDefault
+                else -> snsFollowDefault
+            },
+            contentColor = when {
+                isFollowing -> MaterialTheme.colorScheme.onSurface
+                isDarkTheme -> MaterialTheme.colorScheme.surface
+                else -> MaterialTheme.colorScheme.scrim
+            }
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        border = if (isFollowing) BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.onSurface
+        ) else null,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = modifier
+            .height(32.dp)
+            .bounceClick(),
+    ) {
+        Text(
+            text = stringResource(id = if (isFollowing) R.string.following else R.string.follow),
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
@@ -691,11 +772,19 @@ private fun SNSButtonPreview() {
                 )
                 Row {
                     SNSFollowingButton(
-                        isFollowing = false,
+                        isFollowing = true,
                         onClick = {}
                     )
                     SNSFollowingButton(
+                        isFollowing = false,
+                        onClick = {}
+                    )
+                    SNSDefaultFollowingButton(
                         isFollowing = true,
+                        onClick = {}
+                    )
+                    SNSDefaultFollowingButton(
+                        isFollowing = false,
                         onClick = {}
                     )
                 }
@@ -712,11 +801,23 @@ private fun SNSButtonPreview() {
                     isEnabled = true,
                     onClick = {}
                 )
-                SNSIconButton(
-                    onClick = { },
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = "close"
-                )
+                Row {
+                    SNSIconButton(
+                        onClick = {},
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "close"
+                    )
+                    SNSIconToggleButton(
+                        onClick = {},
+                        icon = painterResource(id = R.drawable.ic_multiple),
+                        isActive = false
+                    )
+                    SNSIconToggleButton(
+                        onClick = {},
+                        icon = painterResource(id = R.drawable.ic_multiple),
+                        isActive = true
+                    )
+                }
                 Row {
                     SNSTextButton(
                         text = "클릭",

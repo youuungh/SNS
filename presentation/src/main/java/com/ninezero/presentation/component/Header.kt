@@ -28,10 +28,12 @@ import com.ninezero.presentation.theme.SNSTheme
 @Composable
 fun PostHeader(
     modifier: Modifier = Modifier,
-    profileImageUrl: String? = null,
     username: String,
+    profileImageUrl: String? = null,
     isOwner: Boolean,
-    onOptionClick: () -> Unit
+    isFollowing: Boolean,
+    onOptionClick: () -> Unit,
+    onFollowClick: () -> Unit
 ) {
     Row(
         modifier = modifier
@@ -62,16 +64,28 @@ fun PostHeader(
             )
         }
 
-        AnimatedVisibility(
-            visible = isOwner,
-            enter = fadeIn(),
-            exit = fadeOut()
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp)
         ) {
-            SNSIconButton(
-                onClick = onOptionClick,
-                imageVector = Icons.Rounded.MoreVert,
-                modifier = Modifier.padding(end = 8.dp)
-            )
+            if (!isOwner) {
+                SNSDefaultFollowingButton(
+                    isFollowing = isFollowing,
+                    onClick = onFollowClick
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isOwner,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                SNSIconButton(
+                    onClick = onOptionClick,
+                    imageVector = Icons.Rounded.MoreVert
+                )
+            }
         }
     }
 }
@@ -86,12 +100,16 @@ private fun PostHeaderPreview() {
                 PostHeader(
                     username = "Username",
                     isOwner = true,
-                    onOptionClick = {}
+                    isFollowing = true,
+                    onOptionClick = {},
+                    onFollowClick = {}
                 )
                 PostHeader(
                     username = "UsernameUsernameUsernameUsernameUsername",
                     isOwner = false,
-                    onOptionClick = {}
+                    isFollowing = false,
+                    onOptionClick = {},
+                    onFollowClick = {}
                 )
             }
         }

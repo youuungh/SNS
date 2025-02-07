@@ -51,10 +51,10 @@ fun CommentsBottomSheet(
     var isClosing by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
-        confirmValueChange = { sheetValue ->
+        confirmValueChange = {
             when {
-                sheetValue == SheetValue.Hidden && isClosing -> true
-                sheetValue == SheetValue.Hidden -> false
+                it == SheetValue.Hidden && isClosing -> true
+                it == SheetValue.Hidden -> false
                 else -> true
             }
         }

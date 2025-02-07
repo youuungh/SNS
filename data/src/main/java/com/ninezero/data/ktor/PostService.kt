@@ -59,6 +59,12 @@ class PostService @Inject constructor(
         }.body()
     }
 
+    suspend fun updatePost(id: Long, requestBody: Any): CommonResponse<Long> {
+        return client.patch("boards/$id") {
+            setBody(requestBody)
+        }.body()
+    }
+
     suspend fun deletePost(id: Long): CommonResponse<Long> {
         return client.delete("boards/$id").body()
     }

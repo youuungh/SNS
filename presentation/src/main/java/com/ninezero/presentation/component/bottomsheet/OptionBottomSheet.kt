@@ -1,6 +1,7 @@
 package com.ninezero.presentation.component.bottomsheet
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -33,7 +33,8 @@ import com.ninezero.presentation.theme.SNSTheme
 fun OptionsBottomSheet(
     showBottomSheet: Boolean,
     onDismiss: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
@@ -88,8 +89,14 @@ fun OptionsBottomSheet(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        DefaultButton(
+                            text = stringResource(R.string.edit),
+                            onClick = onEdit,
+                            icon = R.drawable.ic_edit
+                        )
                         DefaultButton(
                             text = stringResource(R.string.delete),
                             onClick = onDelete,
@@ -135,8 +142,14 @@ private fun OptionsBottomSheetContentPreview() {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    DefaultButton(
+                        text = "수정하기",
+                        onClick = { },
+                        icon = R.drawable.ic_edit
+                    )
                     DefaultButton(
                         text = "삭제하기",
                         onClick = { },

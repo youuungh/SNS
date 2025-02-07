@@ -40,7 +40,17 @@ class PostViewModel @Inject constructor(
         }
     }
 
-    fun onImageClick(image: Image) = intent {
+    fun onSingleImageSelect(image: Image) = intent {
+        reduce {
+            if (state.selectedImages.firstOrNull() == image) {
+                state
+            } else {
+                state.copy(selectedImages = listOf(image))
+            }
+        }
+    }
+
+    fun onMultiImageSelect(image: Image) = intent {
         reduce {
             if (state.selectedImages.contains(image)) {
                 state.copy(selectedImages = state.selectedImages - image)
@@ -50,9 +60,15 @@ class PostViewModel @Inject constructor(
         }
     }
 
+    fun onMultiSelectDisabled() = intent {
+        reduce {
+            state.copy(selectedImages = state.selectedImages.firstOrNull()?.let { listOf(it) } ?: emptyList())
+        }
+    }
+
     fun onPostClick() = intent {
         reduce { state.copy(isLoading = true) }
-        delay(1000)
+        delay(2000)
 
         withContext(IO) {
             try {

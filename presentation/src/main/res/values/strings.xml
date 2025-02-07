@@ -12,10 +12,12 @@
     <string name="cancel">취소</string>
     <string name="confirm">확인</string>
     <string name="new_post">새 게시물</string>
+    <string name="edit_post">게시물 수정</string>
     <string name="next">다음</string>
     <string name="posting">게시</string>
     <string name="option">옵션</string>
     <string name="delete">삭제하기</string>
+    <string name="edit">수정하기</string>
     <string name="title_delete">삭제</string>
     <string name="comment">댓글</string>
     <string name="show_more">더 보기</string>
@@ -36,6 +38,8 @@
     <string name="my_saved">저장됨</string>
     <string name="follower">팔로워</string>
     <string name="suggested_users">팔로우할 만한 사람</string>
+    <string name="single_select">단일 선택</string>
+    <string name="multi_select">다중 선택</string>
 
     <!-- Labels -->
     <string name="label_no_account">계정이 없으신가요?</string>

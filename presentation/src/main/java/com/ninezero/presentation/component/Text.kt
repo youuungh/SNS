@@ -49,6 +49,10 @@ import com.ninezero.presentation.theme.snsCursorDark
 import com.ninezero.presentation.theme.snsCursorLight
 import com.ninezero.presentation.theme.snsDefault
 import com.ninezero.presentation.theme.snsDefaultMedium
+import com.ninezero.presentation.theme.snsSmallButtonDarkBackground
+import com.ninezero.presentation.theme.snsSmallButtonDarkText
+import com.ninezero.presentation.theme.snsSmallButtonLightBackground
+import com.ninezero.presentation.theme.snsSmallButtonLightText
 
 @Composable
 fun SNSTextField(
@@ -212,6 +216,44 @@ fun CommentInputField(
                 }
             }
         )
+    }
+}
+
+@Composable
+fun SNSSmallText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = LocalTheme.current
+
+    Box(
+        modifier = modifier
+            .height(24.dp)
+            .background(
+                if (isDarkTheme) snsSmallButtonDarkBackground
+                else snsSmallButtonLightBackground,
+                RoundedCornerShape(4.dp)
+            )
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isDarkTheme) snsSmallButtonDarkText
+            else snsSmallButtonLightText
+        )
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SNSSmallTextPreview() {
+    SNSTheme {
+        Surface {
+            SNSSmallText(text = "Text")
+        }
     }
 }
 

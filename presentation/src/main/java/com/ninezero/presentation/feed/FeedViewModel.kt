@@ -121,6 +121,14 @@ class FeedViewModel @Inject constructor(
         reduce { state.copy(commentsSheetPost = null) }
     }
 
+    fun showEditSheet(post: PostCardModel) = intent {
+        reduce { state.copy(editSheetPost = post) }
+    }
+
+    fun hideEditSheet() = intent {
+        reduce { state.copy(editSheetPost = null) }
+    }
+
     fun showDeletePostDialog(post: PostCardModel) = intent {
         reduce { state.copy(dialog = FeedDialog.DeletePost(post)) }
     }
@@ -142,6 +150,27 @@ class FeedViewModel @Inject constructor(
 
         return (initialComments + addedComments).distinctBy { it.id }
             .filterNot { deletedCommentIds.contains(it.id) }
+    }
+
+    fun onPostEdit(postId: Long, content: String, images: List<String>) = intent {
+        reduce { state.copy(isEditing = true) }
+        delay(2000)
+
+        when (val result = feedUseCase.updatePost(postId, content, images)) {
+            is ApiResult.Success -> {
+                reduce {
+                    state.copy(
+                        editSheetPost = null,
+                        isEditing = false
+                    )
+                }
+                load()
+            }
+            is ApiResult.Error -> {
+                reduce { state.copy(isEditing = false) }
+                handleError(result)
+            }
+        }
     }
 
     fun onPostDelete(model: PostCardModel) = intent {
@@ -231,6 +260,34 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun handleFollowClick(userId: Long, post: PostCardModel) = intent {
+        val isFollowing = state.isFollowing[userId] ?: post.isFollowing
+
+        if (isFollowing) {
+            when (val result = userUseCase.unfollowUser(userId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isFollowing = state.isFollowing + (userId to false)
+                        )
+                    }
+                }
+                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+            }
+        } else {
+            when (val result = userUseCase.followUser(userId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isFollowing = state.isFollowing + (userId to true)
+                        )
+                    }
+                }
+                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+            }
+        }
+    }
+
     private fun updateComments(
         postId: Long,
         comment: Comment,
@@ -264,12 +321,15 @@ data class FeedState(
     val deletedPostIds: Set<Long> = emptySet(),
     val addedComments: Map<Long, List<Comment>> = emptyMap(),
     val deletedComments: Map<Long, List<Comment>> = emptyMap(),
-    val isLiked: Map<Long, Boolean> = emptyMap(),
     val likesCount: Map<Long, Int> = emptyMap(),
+    val isLiked: Map<Long, Boolean> = emptyMap(),
+    val isFollowing: Map<Long, Boolean> = emptyMap(),
     val isRefreshing: Boolean = false,
+    val isEditing: Boolean = false,
     val dialog: FeedDialog = FeedDialog.Hidden,
     val optionsSheetPost: PostCardModel? = null,
-    val commentsSheetPost: PostCardModel? = null
+    val commentsSheetPost: PostCardModel? = null,
+    val editSheetPost: PostCardModel? = null
 )
 
 sealed interface FeedDialog {

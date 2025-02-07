@@ -32,16 +32,12 @@ fun PostToolbar(
 ) {
     SNSSurface(
         modifier = modifier,
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
         elevation = 8.dp
     ) {
         Row(
             modifier = modifier
-                .background(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-                )
                 .fillMaxWidth()
+                .background(color = MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 16.dp)
                 .navigationBarsPadding(),
             verticalAlignment = Alignment.CenterVertically

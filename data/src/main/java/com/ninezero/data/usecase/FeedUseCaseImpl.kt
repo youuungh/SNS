@@ -3,6 +3,9 @@ package com.ninezero.data.usecase
 import androidx.paging.PagingData
 import com.ninezero.data.model.param.CommentParam
 import com.ninezero.data.ktor.PostService
+import com.ninezero.data.model.param.ContentParam
+import com.ninezero.data.model.param.PostParam
+import com.ninezero.data.model.param.UpdatePostParam
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.model.Post
@@ -10,6 +13,13 @@ import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.repository.PostRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.putJsonArray
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -102,19 +112,24 @@ class FeedUseCaseImpl @Inject constructor(
         ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
     }
 
-    override suspend fun addComment(
-        postId: Long,
-        text: String
-    ): ApiResult<Long> {
+    override suspend fun updatePost(postId: Long, content: String, images: List<String>): ApiResult<Long> {
         return try {
             checkNetwork()?.let { return it } // 네트워크 상태 확인
 
-            val commentParam = CommentParam(text)
-            val response = postService.addComment(postId = postId, requestBody = commentParam)
+            val updateContent = buildJsonObject {
+                put("text", JsonPrimitive(content))
+                putJsonArray("images") {
+                    images.forEach { add(JsonPrimitive(it)) }
+                }
+            }.toString()
+
+            val param = UpdatePostParam(title = "제목없음", content = updateContent)
+
+            val response = postService.updatePost(postId, param)
             if (response.result == "SUCCESS") {
                 ApiResult.Success(response.data!!)
             } else {
-                ApiResult.Error.ServerError(response.errorMessage ?: "댓글 작성에 실패했습니다")
+                ApiResult.Error.ServerError(response.errorMessage ?: "게시물 수정에 실패했습니다")
             }
         } catch (e: Exception) {
             e.handleNetworkException()
@@ -130,6 +145,25 @@ class FeedUseCaseImpl @Inject constructor(
                 ApiResult.Success(response.data!!)
             } else {
                 ApiResult.Error.ServerError(response.errorMessage ?: "게시물 삭제에 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun addComment(
+        postId: Long,
+        text: String
+    ): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val commentParam = CommentParam(text)
+            val response = postService.addComment(postId = postId, requestBody = commentParam)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "댓글 작성에 실패했습니다")
             }
         } catch (e: Exception) {
             e.handleNetworkException()
