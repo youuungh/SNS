@@ -57,9 +57,9 @@ class PostRemoteMediator @Inject constructor(
             }
 
             val response = postService.getPosts(page = page, size = state.config.pageSize)
-            val serverPosts = response.data ?: emptyList()
-            Timber.d("Server response for page $page: total posts=${serverPosts.size}")
-            val endOfPaginationReached = serverPosts.isEmpty()
+            val posts = (response.data ?: emptyList()).map { it.copy(isMyPost = false) }
+            Timber.d("Server response for page $page: total posts=${posts.size}")
+            val endOfPaginationReached = posts.isEmpty()
 
             val prevPage = if (page == 1) null else page - 1
             val nextPage = if (endOfPaginationReached) null else page + 1
@@ -71,7 +71,7 @@ class PostRemoteMediator @Inject constructor(
                 }
 
                 // RemoteKey 생성 및 저장
-                val keys = serverPosts.map { post ->
+                val keys = posts.map { post ->
                     PostRemoteKey(
                         id = post.id,
                         prevPage = prevPage,
@@ -80,7 +80,7 @@ class PostRemoteMediator @Inject constructor(
                 }
 
                 remoteKeyDao.insertAll(remoteKeys = keys)
-                postDao.insertAll(posts = serverPosts)
+                postDao.insertAll(posts = posts)
             }
             return MediatorResult.Success(endOfPaginationReached = endOfPaginationReached)
         } catch (e: Exception) {

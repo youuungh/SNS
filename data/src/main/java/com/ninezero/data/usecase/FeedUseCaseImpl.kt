@@ -1,11 +1,15 @@
 package com.ninezero.data.usecase
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.ninezero.data.db.post.saved.SavedPostPagingSource
 import com.ninezero.data.model.param.CommentParam
 import com.ninezero.data.ktor.PostService
 import com.ninezero.data.model.param.ContentParam
 import com.ninezero.data.model.param.PostParam
 import com.ninezero.data.model.param.UpdatePostParam
+import com.ninezero.data.repository.PostRepositoryImpl.Companion.PAGE_SIZE
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.model.Post
@@ -25,73 +29,73 @@ import javax.inject.Inject
 
 /** retrofit
 class FeedUseCaseImpl @Inject constructor(
-    private val postRepository: PostRepository,
-    private val postService: PostService
+private val postRepository: PostRepository,
+private val postService: PostService
 ) : FeedUseCase {
 
-    override suspend fun getPosts(): ApiResult<Flow<PagingData<Post>>> = try {
-        ApiResult.Success(postRepository.getPosts())
-    } catch (e: Exception) {
-        Timber.e("Network Error: ${e.message}")
-        ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
-    }
-
-    override suspend fun addComment(
-        postId: Long,
-        text: String
-    ): ApiResult<Long> = try {
-        val requestBody = CommentParam(text).toRequestBody()
-        val response = postService.addComment(postId = postId, requestBody = requestBody)
-        ApiResult.Success(response.data)
-    } catch (e: Exception) {
-        when (e) {
-            is retrofit2.HttpException -> {
-                Timber.e("HTTP Error: ${e.code()}")
-                ApiResult.Error.ServerError("댓글 작성에 실패했습니다")
-            }
-            else -> {
-                Timber.e("Network Error: ${e.message}")
-                ApiResult.Error.NetworkError("네트워크 오류가 발생했습니다")
-            }
-        }
-    }
-
-    override suspend fun deletePost(postId: Long): ApiResult<Long> = try {
-        val response = postService.deletePost(id = postId)
-        ApiResult.Success(response.data)
-    } catch (e: Exception) {
-        when (e) {
-            is retrofit2.HttpException -> {
-                Timber.e("HTTP Error: ${e.code()}")
-                ApiResult.Error.ServerError("게시물 삭제에 실패했습니다")
-            }
-            else -> {
-                Timber.e("Network Error: ${e.message}")
-                ApiResult.Error.NetworkError("네트워크 오류가 발생했습니다")
-            }
-        }
-    }
-
-    override suspend fun deleteComment(
-        postId: Long,
-        commentId: Long
-    ): ApiResult<Long> = try {
-        val response = postService.deleteComment(postId, commentId)
-        ApiResult.Success(response.data)
-    } catch (e: Exception) {
-        when (e) {
-            is retrofit2.HttpException -> {
-                Timber.e("HTTP Error: ${e.code()}")
-                ApiResult.Error.ServerError("댓글 삭제에 실패했습니다")
-            }
-            else -> {
-                Timber.e("Network Error: ${e.message}")
-                ApiResult.Error.NetworkError("네트워크 오류가 발생했습니다")
-            }
-        }
-    }
+override suspend fun getPosts(): ApiResult<Flow<PagingData<Post>>> = try {
+ApiResult.Success(postRepository.getPosts())
+} catch (e: Exception) {
+Timber.e("Network Error: ${e.message}")
+ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
 }
-*/
+
+override suspend fun addComment(
+postId: Long,
+text: String
+): ApiResult<Long> = try {
+val requestBody = CommentParam(text).toRequestBody()
+val response = postService.addComment(postId = postId, requestBody = requestBody)
+ApiResult.Success(response.data)
+} catch (e: Exception) {
+when (e) {
+is retrofit2.HttpException -> {
+Timber.e("HTTP Error: ${e.code()}")
+ApiResult.Error.ServerError("댓글 작성에 실패했습니다")
+}
+else -> {
+Timber.e("Network Error: ${e.message}")
+ApiResult.Error.NetworkError("네트워크 오류가 발생했습니다")
+}
+}
+}
+
+override suspend fun deletePost(postId: Long): ApiResult<Long> = try {
+val response = postService.deletePost(id = postId)
+ApiResult.Success(response.data)
+} catch (e: Exception) {
+when (e) {
+is retrofit2.HttpException -> {
+Timber.e("HTTP Error: ${e.code()}")
+ApiResult.Error.ServerError("게시물 삭제에 실패했습니다")
+}
+else -> {
+Timber.e("Network Error: ${e.message}")
+ApiResult.Error.NetworkError("네트워크 오류가 발생했습니다")
+}
+}
+}
+
+override suspend fun deleteComment(
+postId: Long,
+commentId: Long
+): ApiResult<Long> = try {
+val response = postService.deleteComment(postId, commentId)
+ApiResult.Success(response.data)
+} catch (e: Exception) {
+when (e) {
+is retrofit2.HttpException -> {
+Timber.e("HTTP Error: ${e.code()}")
+ApiResult.Error.ServerError("댓글 삭제에 실패했습니다")
+}
+else -> {
+Timber.e("Network Error: ${e.message}")
+ApiResult.Error.NetworkError("네트워크 오류가 발생했습니다")
+}
+}
+}
+}
+ */
 
 class FeedUseCaseImpl @Inject constructor(
     private val postService: PostService,
@@ -112,7 +116,29 @@ class FeedUseCaseImpl @Inject constructor(
         ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
     }
 
-    override suspend fun updatePost(postId: Long, content: String, images: List<String>): ApiResult<Long> {
+    override suspend fun getSavedPosts(): ApiResult<Flow<PagingData<Post>>> = try {
+        ApiResult.Success(
+            Pager(
+                PagingConfig(
+                    pageSize = PAGE_SIZE,
+                    initialLoadSize = PAGE_SIZE * 2,
+                    prefetchDistance = 2,
+                    enablePlaceholders = true
+                )
+            ) {
+                SavedPostPagingSource(postService)
+            }.flow
+        )
+    } catch (e: Exception) {
+        Timber.e("Network Error: ${e.message}")
+        ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
+    }
+
+    override suspend fun updatePost(
+        postId: Long,
+        content: String,
+        images: List<String>
+    ): ApiResult<Long> {
         return try {
             checkNetwork()?.let { return it } // 네트워크 상태 확인
 
@@ -212,6 +238,36 @@ class FeedUseCaseImpl @Inject constructor(
                 ApiResult.Success(response.data!!)
             } else {
                 ApiResult.Error.ServerError(response.errorMessage ?: "좋아요 취소 실패")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun savePost(postId: Long): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val response = postService.savePost(postId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "저장 실패")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun unsavePost(postId: Long): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val response = postService.unsavePost(postId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "저장 취소 실패")
             }
         } catch (e: Exception) {
             e.handleNetworkException()

@@ -17,6 +17,7 @@ data class PostCardModel(
     val likesCount: Int,
     val isLiked: Boolean,
     val isFollowing: Boolean,
+    val isSaved: Boolean,
     val createdAt: String
 )
 
@@ -32,6 +33,7 @@ fun Post.toModel(): PostCardModel {
         likesCount = this.likesCount,
         isLiked = this.isLiked,
         isFollowing = this.isFollowing,
+        isSaved = this.isSaved,
         createdAt = this.createdAt
     )
 }

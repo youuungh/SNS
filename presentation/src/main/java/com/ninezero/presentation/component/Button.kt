@@ -36,6 +36,10 @@ import com.ninezero.presentation.theme.snsSmallButtonLightBackground
 import com.ninezero.presentation.theme.snsSmallButtonLightText
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.snsFollowDefault
+import com.ninezero.presentation.theme.snsSaveButtonDarkBackground
+import com.ninezero.presentation.theme.snsSaveButtonDarkText
+import com.ninezero.presentation.theme.snsSaveButtonLightBackground
+import com.ninezero.presentation.theme.snsSaveButtonLightText
 
 enum class ButtonState { Pressed, Idle }
 
@@ -627,6 +631,46 @@ fun SNSFollowingButton(
 }
 
 @Composable
+fun SaveButton(
+    isSaved: Boolean,
+    text: String? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = LocalTheme.current
+
+    Row(
+        modifier = modifier
+            .background(
+                color = if (isDarkTheme) snsSaveButtonDarkBackground else snsSaveButtonLightBackground,
+                shape = MaterialTheme.shapes.small
+            )
+            .clip(MaterialTheme.shapes.small)
+            .bounceClick()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(id = if (isSaved) R.drawable.ic_save_filled else R.drawable.ic_save),
+            contentDescription = "save",
+            modifier = Modifier.size(24.dp),
+            tint = if (isDarkTheme) snsSaveButtonDarkText else snsSaveButtonLightText
+        )
+
+        if (text != null) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Normal,
+                color = if (isDarkTheme) snsSaveButtonDarkText else snsSaveButtonLightText
+            )
+        }
+    }
+}
+
+@Composable
 fun SNSDefaultFollowingButton(
     isFollowing: Boolean,
     onClick: () -> Unit,
@@ -704,6 +748,19 @@ fun PostButtonsPreview() {
                     )
                     CommentButton(
                         commentsCount = 11,
+                        onClick = {}
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SaveButton(
+                        isSaved = false,
+                        onClick = {}
+                    )
+                    SaveButton(
+                        isSaved = true,
                         onClick = {}
                     )
                 }

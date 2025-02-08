@@ -59,6 +59,13 @@ class PostService @Inject constructor(
         }.body()
     }
 
+    suspend fun getSavedPosts(page: Int, size: Int): CommonResponse<List<PostDto>> {
+        return client.get("boards/saved-boards") {
+            parameter("page", page)
+            parameter("size", size)
+        }.body()
+    }
+
     suspend fun updatePost(id: Long, requestBody: Any): CommonResponse<Long> {
         return client.patch("boards/$id") {
             setBody(requestBody)
@@ -80,10 +87,18 @@ class PostService @Inject constructor(
     }
 
     suspend fun likePost(postId: Long): CommonResponse<Long> {
-        return client.post("boards/$postId/like-board").body()
+        return client.post("boards/$postId/like").body()
     }
 
     suspend fun unlikePost(postId: Long): CommonResponse<Long> {
-        return client.delete("boards/$postId/like-board").body()
+        return client.delete("boards/$postId/like").body()
+    }
+
+    suspend fun savePost(postId: Long): CommonResponse<Long> {
+        return client.post("boards/$postId/save").body()
+    }
+
+    suspend fun unsavePost(postId: Long): CommonResponse<Long> {
+        return client.delete("boards/$postId/save").body()
     }
 }

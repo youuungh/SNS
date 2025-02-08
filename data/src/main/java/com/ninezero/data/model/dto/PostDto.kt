@@ -21,7 +21,10 @@ data class PostDto(
     val comments: List<CommentDto>,
     val likesCount: Int,
     val isLiked: Boolean,
-    val isFollowing: Boolean
+    val isFollowing: Boolean,
+    val isSaved: Boolean,
+    @kotlinx.serialization.Transient
+    val isMyPost: Boolean = false
 )
 
 fun PostDto.toDomain(): Post {
@@ -38,6 +41,7 @@ fun PostDto.toDomain(): Post {
         likesCount = this.likesCount,
         isLiked = this.isLiked,
         isFollowing = this.isFollowing,
+        isSaved = this.isSaved,
         createdAt = this.createdAt
     )
 }

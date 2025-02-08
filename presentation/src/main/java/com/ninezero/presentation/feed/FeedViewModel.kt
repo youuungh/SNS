@@ -13,6 +13,7 @@ import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
 import com.ninezero.presentation.model.PostCardModel
 import com.ninezero.presentation.model.toModel
+import com.ninezero.presentation.profile.ProfileSideEffect
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,7 @@ import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
 import timber.log.Timber
 import javax.inject.Inject
+import kotlin.collections.plus
 
 @HiltViewModel
 class FeedViewModel @Inject constructor(
@@ -288,6 +290,36 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun handleSavedClick(postId: Long, post: PostCardModel) = intent {
+        val isSaved = state.isSaved[postId] ?: post.isSaved
+
+        if (isSaved) {
+            when (val result = feedUseCase.unsavePost(postId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isSaved = state.isSaved + (postId to false)
+                        )
+                    }
+                }
+
+                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+            }
+        } else {
+            when (val result = feedUseCase.savePost(postId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isSaved = state.isSaved + (postId to true)
+                        )
+                    }
+                }
+
+                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+            }
+        }
+    }
+
     private fun updateComments(
         postId: Long,
         comment: Comment,
@@ -324,6 +356,7 @@ data class FeedState(
     val likesCount: Map<Long, Int> = emptyMap(),
     val isLiked: Map<Long, Boolean> = emptyMap(),
     val isFollowing: Map<Long, Boolean> = emptyMap(),
+    val isSaved: Map<Long, Boolean> = emptyMap(),
     val isRefreshing: Boolean = false,
     val isEditing: Boolean = false,
     val dialog: FeedDialog = FeedDialog.Hidden,

@@ -8,6 +8,7 @@ import com.ninezero.data.db.post.PostDatabase
 import com.ninezero.data.ktor.PostService
 import com.ninezero.data.model.dto.PostDto
 import com.ninezero.domain.repository.NetworkRepository
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 class MyPostRemoteMediator @Inject constructor(
@@ -44,7 +45,7 @@ class MyPostRemoteMediator @Inject constructor(
             }
 
             val response = postService.getMyPosts(page = page, size = state.config.pageSize)
-            val myPosts = response.data ?: emptyList()
+            val myPosts = (response.data ?: emptyList()).map { it.copy(isMyPost = true) }
             val endOfPaginationReached = myPosts.isEmpty()
 
             val prevPage = if (page == 1) null else page - 1
@@ -65,7 +66,7 @@ class MyPostRemoteMediator @Inject constructor(
                 }
 
                 remoteKeyDao.insertAll(remoteKeys = keys)
-                postDao.insertMyAll(myPosts = myPosts)
+                postDao.insertAll(posts = myPosts)
             }
             return MediatorResult.Success(endOfPaginationReached = endOfPaginationReached)
         } catch (e: Exception) {

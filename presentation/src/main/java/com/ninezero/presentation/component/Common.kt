@@ -27,7 +27,11 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.LocalTheme
 import com.ninezero.presentation.theme.SNSTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun TopFAB(
@@ -99,32 +104,85 @@ fun LoadingProgress(
 
 @Composable
 fun EmptyFeedScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)  // 300ms 딜레이
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300))
     ) {
-        Text(
-            text = stringResource(R.string.label_empty_feed),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.label_empty_feed),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
     }
 }
 
 @Composable
 fun EmptyMyPostScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 100.dp),
-        contentAlignment = Alignment.TopCenter
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)  // 300ms 딜레이
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300))
     ) {
-        Text(
-            text = stringResource(R.string.label_empty_my_post),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            textAlign = TextAlign.Center
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 100.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Text(
+                text = stringResource(R.string.label_empty_my_post),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptySavedPostScreen() {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)  // 300ms 딜레이
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 100.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Text(
+                text = stringResource(R.string.label_empty_saved_post),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 

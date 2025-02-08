@@ -55,6 +55,7 @@
     <string name="label_no_comment">작성된 댓글이 없습니다</string>
     <string name="label_empty_feed">피드가 비었습니다</string>
     <string name="label_empty_my_post">첫 게시물을 만들어보세요</string>
+    <string name="label_empty_saved_post">저장된 게시물이 없습니다</string>
     <string name="label_end_of_page">더 이상 피드가 없습니다</string>
 
     <!-- Error Messages -->

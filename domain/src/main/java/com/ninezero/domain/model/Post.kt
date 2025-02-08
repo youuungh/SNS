@@ -12,5 +12,6 @@ data class Post(
     val likesCount: Int,
     val isLiked: Boolean,
     val isFollowing: Boolean,
+    val isSaved: Boolean,
     val createdAt: String
 )

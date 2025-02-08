@@ -118,11 +118,13 @@ fun FeedScreen(
                                             likesCount = state.likesCount[post.postId] ?: post.likesCount,
                                             isLiked = state.isLiked[post.postId] ?: post.isLiked,
                                             isFollowing = state.isFollowing[post.userId] ?: post.isFollowing,
+                                            isSaved = state.isSaved[post.postId] ?: post.isSaved,
                                             createdAt = post.createdAt,
                                             onOptionClick = { viewModel.showOptionsSheet(post) },
                                             onCommentClick = { viewModel.showCommentsSheet(post) },
                                             onLikeClick = { viewModel.handleLikeClick(post.postId, post) },
-                                            onFollowClick = { viewModel.handleFollowClick(post.userId, post) }
+                                            onFollowClick = { viewModel.handleFollowClick(post.userId, post) },
+                                            onSavedClick = { viewModel.handleSavedClick(post.postId, post) }
                                         )
                                     }
                                 }

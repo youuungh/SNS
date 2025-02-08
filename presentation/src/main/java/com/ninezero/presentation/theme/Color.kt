@@ -28,6 +28,12 @@ val snsLightText2 = Color(0xFF666666)  // Light Text Secondary
 // Accent Colors
 val snsDarkAccent = Color(0xFF7FCCA7)
 
+val snsSaveDefault = Color(0xFF4A90E2)  // Primary blue
+val snsSaveDark = Color(0xFF357ABD)     // Darker blue for dark theme
+
+val snsSaveMedium = Color(0xFFD4E4F7)   // Medium blue tint
+val snsSaveLight = Color(0xFFEFF5FC)     // Light blue tint
+
 // Theme Colors
 val snsBackgroundLight = snsLightBg1
 val snsBackgroundDark = snsDarkBg1
@@ -47,6 +53,12 @@ val snsSmallButtonLightBackground = snsDefaultLight
 val snsSmallButtonDarkBackground = snsDarkBg3
 val snsSmallButtonLightText = snsDefault
 val snsSmallButtonDarkText = snsDarkAccent
+
+// SaveButton Colors
+val snsSaveButtonLightBackground = snsSaveLight
+val snsSaveButtonDarkBackground = snsDarkBg3  // Keep consistent with theme
+val snsSaveButtonLightText = snsSaveDefault
+val snsSaveButtonDarkText = snsSaveDefault    // Using primary blue for dark theme
 
 // Comment Colors
 val snsCommentLightBackground = snsDefaultLight

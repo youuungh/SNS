@@ -8,6 +8,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -55,6 +56,7 @@ import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.EmptyMyPostScreen
+import com.ninezero.presentation.component.EmptySavedPostScreen
 import com.ninezero.presentation.component.LoadingProgress
 import com.ninezero.presentation.component.ItemSection
 import com.ninezero.presentation.component.PullToRefreshLayout
@@ -72,6 +74,7 @@ fun ProfileScreen(
     val state = viewModel.collectAsState().value
     val suggestedUsers = state.suggestedUsers.collectAsLazyPagingItems()
     val myPosts = state.myPosts.collectAsLazyPagingItems()
+    val savedPosts = state.savedPosts.collectAsLazyPagingItems()
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableStateOf(ProfileTab.POSTS) }
 
@@ -86,6 +89,10 @@ fun ProfileScreen(
 
     LaunchedEffect(selectedTab) {
         pagerState.animateScrollToPage(selectedTab.ordinal)
+
+        if (selectedTab == ProfileTab.SAVED && !state.isSavedPostsLoaded) {
+            viewModel.loadSavedPosts()
+        }
     }
 
     val visualMediaPickerLauncher = rememberLauncherForActivityResult(
@@ -175,7 +182,7 @@ fun ProfileScreen(
                                     ProfileTab.POSTS -> {
                                         when (myPosts.loadState.refresh) {
                                             is LoadState.Loading -> {
-                                                LoadingProgress(modifier = Modifier.padding(top = 100.dp))
+                                                LoadingProgress(modifier = Modifier.padding(top = 80.dp))
                                             }
 
                                             else -> {
@@ -189,7 +196,19 @@ fun ProfileScreen(
                                     }
 
                                     ProfileTab.SAVED -> {
-                                        // 저장됨 탭
+                                        when (savedPosts.loadState.refresh) {
+                                            is LoadState.Loading -> {
+                                                LoadingProgress(modifier = Modifier.padding(top = 80.dp))
+                                            }
+
+                                            else -> {
+                                                if (savedPosts.itemCount == 0 && savedPosts.loadState.refresh is LoadState.NotLoading) {
+                                                    EmptySavedPostScreen()
+                                                } else {
+                                                    SavedPostItems(savedPosts = savedPosts)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -244,17 +263,21 @@ private fun ProfileHeaderSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        SNSEditProfileImage(
-            modifier = Modifier.size(100.dp),
-            imageUrl = profileImageUrl,
-            onClick = onEditProfileImage
-        )
+        key(profileImageUrl) {
+            SNSEditProfileImage(
+                modifier = Modifier.size(100.dp),
+                imageUrl = profileImageUrl,
+                onClick = onEditProfileImage
+            )
+        }
 
-        Text(
-            text = username.replaceFirstChar { it.uppercase() },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        key(username) {
+            Text(
+                text = username.replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
         SNSSmallButton(
             text = stringResource(R.string.edit_username),
@@ -268,18 +291,24 @@ private fun ProfileHeaderSection(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatisticItem(
-                count = postCount,
-                label = stringResource(R.string.post)
-            )
-            StatisticItem(
-                count = followerCount,
-                label = stringResource(R.string.follower)
-            )
-            StatisticItem(
-                count = followingCount,
-                label = stringResource(R.string.following)
-            )
+            key(postCount) {
+                StatisticItem(
+                    count = postCount,
+                    label = stringResource(R.string.post)
+                )
+            }
+            key(followerCount) {
+                StatisticItem(
+                    count = followerCount,
+                    label = stringResource(R.string.follower)
+                )
+            }
+            key(followingCount) {
+                StatisticItem(
+                    count = followingCount,
+                    label = stringResource(R.string.following)
+                )
+            }
         }
     }
 }
@@ -304,13 +333,15 @@ private fun SuggestedUsersSection(
                     key = suggestedUsers.itemKey { it.userId }
                 ) { index ->
                     suggestedUsers[index]?.let { user ->
-                        UserCard(
-                            userId = user.userId,
-                            username = user.userName,
-                            profileImagePath = user.profileImagePath,
-                            isFollowing = isFollowing[user.userId] ?: user.isFollowing,
-                            onFollowClick = { onFollowClick(user.userId, user) }
-                        )
+                        key(user.userId) {
+                            UserCard(
+                                userId = user.userId,
+                                username = user.userName,
+                                profileImagePath = user.profileImagePath,
+                                isFollowing = isFollowing[user.userId] ?: user.isFollowing,
+                                onFollowClick = { onFollowClick(user.userId, user) }
+                            )
+                        }
                     }
                 }
             }
@@ -345,18 +376,93 @@ private fun MyPostItems(
                             .bounceClick()
                             .clickable { /* 상세 페이지 */ }
                     ) {
-                        AsyncImage(
-                            model = ImageRequest
-                                .Builder(LocalContext.current)
-                                .data(post.images.first())
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                        )
+                        key(post.images.first()) {
+                            AsyncImage(
+                                model = ImageRequest
+                                    .Builder(LocalContext.current)
+                                    .data(post.images.first())
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                            )
+                        }
+
+                        if (post.images.size > 1) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .align(Alignment.TopEnd),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_multiple),
+                                    contentDescription = null,
+                                    tint = Color.Black.copy(alpha = 0.6f),
+                                    modifier = Modifier
+                                        .scale(1.2f)
+                                        .blur(6.dp)
+                                )
+
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_multiple),
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedPostItems(
+    savedPosts: LazyPagingItems<Post>
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(
+                ((savedPosts.itemCount + 2/ 3) *
+                        (LocalConfiguration.current.screenWidthDp / 3)).dp
+            ),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        items(
+            count = savedPosts.itemCount,
+            key = savedPosts.itemKey { it.id }
+        ) { index ->
+            savedPosts[index]?.let { post ->
+                if (post.images.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .bounceClick()
+                            .clickable { /* 상세 페이지 */ }
+                    ) {
+                        key(post.images.first()) {
+                            AsyncImage(
+                                model = ImageRequest
+                                    .Builder(LocalContext.current)
+                                    .data(post.images.first())
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                            )
+                        }
 
                         if (post.images.size > 1) {
                             Box(

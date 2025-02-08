@@ -13,6 +13,7 @@ import com.ninezero.domain.model.Post
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
+import com.ninezero.presentation.model.PostCardModel
 import com.ninezero.presentation.model.UserCardModel
 import com.ninezero.presentation.model.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -85,41 +86,55 @@ class ProfileViewModel @Inject constructor(
 
                                 reduce { state.copy(suggestedUsers = suggestedUsers) }
                             }
-
                             is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
                         }
                     } else {
                         postSideEffect(ProfileSideEffect.ShowSnackbar("네트워크 연결 오류"))
                     }
                 }
-
                 is ApiResult.Error.Unauthorized -> {
                     postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
                 }
-
                 is ApiResult.Error.NotFound -> {
                     postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
                 }
-
                 is ApiResult.Error -> {
                     reduce { state.copy(isLoading = false, isRefreshing = false) }
                     postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
                 }
             }
 
-            when (val result = feedUseCase.getMyPosts()) {
-                is ApiResult.Success -> {
-                    val myPosts = result.data
-                        .cachedIn(viewModelScope)
+            loadMyPosts()
+            reduce { state.copy(isMyPostsLoaded = true) }
 
-                    reduce { state.copy(myPosts = myPosts) }
-                }
-
-                is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
-            }
         } catch (e: Exception) {
             reduce { state.copy(isLoading = false, isRefreshing = false) }
             Timber.e(e)
+        }
+    }
+
+    private fun loadMyPosts() = intent {
+        when (val result = feedUseCase.getMyPosts()) {
+            is ApiResult.Success -> {
+                val myPosts = result.data.cachedIn(viewModelScope)
+                reduce { state.copy(myPosts = myPosts) }
+            }
+            is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
+        }
+    }
+
+    fun loadSavedPosts() = intent {
+        when (val result = feedUseCase.getSavedPosts()) {
+            is ApiResult.Success -> {
+                val savedPosts = result.data.cachedIn(viewModelScope)
+                reduce {
+                    state.copy(
+                        savedPosts = savedPosts,
+                        isSavedPostsLoaded = true
+                    )
+                }
+            }
+            is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
         }
     }
 
@@ -179,6 +194,36 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun handleSavedClick(postId: Long, post: PostCardModel) = intent {
+        val isSaved = state.isSaved[postId] ?: post.isSaved
+
+        if (isSaved) {
+            when (val result = feedUseCase.unsavePost(postId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isSaved = state.isSaved + (postId to false)
+                        )
+                    }
+                }
+
+                is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
+            }
+        } else {
+            when (val result = feedUseCase.savePost(postId)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            isSaved = state.isSaved + (postId to true)
+                        )
+                    }
+                }
+
+                is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
+            }
+        }
+    }
+
     fun showEditUsernameDialog() = intent {
         reduce { state.copy(dialog = ProfileDialog.EditUsername(state.username)) }
     }
@@ -196,11 +241,15 @@ data class ProfileState(
     val followerCount: Int = 0,
     val followingCount: Int = 0,
     val isFollowing: Map<Long, Boolean> = emptyMap(),
+    val isSaved: Map<Long, Boolean> = emptyMap(),
     val suggestedUsers: Flow<PagingData<UserCardModel>> = emptyFlow<PagingData<UserCardModel>>(),
     val myPosts: Flow<PagingData<Post>> = emptyFlow<PagingData<Post>>(),
+    val savedPosts: Flow<PagingData<Post>> = emptyFlow<PagingData<Post>>(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
-    val dialog: ProfileDialog = ProfileDialog.Hidden
+    val dialog: ProfileDialog = ProfileDialog.Hidden,
+    val isMyPostsLoaded: Boolean = false,
+    val isSavedPostsLoaded: Boolean = false
 )
 
 sealed interface ProfileDialog {

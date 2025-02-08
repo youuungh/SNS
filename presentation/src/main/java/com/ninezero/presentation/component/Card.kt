@@ -58,112 +58,143 @@ fun PostCard(
     isOwner: Boolean,
     isLiked: Boolean,
     isFollowing: Boolean,
+    isSaved: Boolean,
     likesCount: Int,
     createdAt: String,
     onOptionClick: () -> Unit,
     onCommentClick: () -> Unit,
     onLikeClick: () -> Unit,
     onFollowClick: () -> Unit,
+    onSavedClick: () -> Unit,
 ) {
     Surface {
         Column(modifier = Modifier.fillMaxWidth()) {
-            PostHeader(
-                username = username,
-                profileImageUrl = profileImageUrl,
-                isOwner = isOwner,
-                isFollowing = isFollowing,
-                onOptionClick = onOptionClick,
-                onFollowClick = onFollowClick
-            )
+            key(username, profileImageUrl) {
+                PostHeader(
+                    username = username,
+                    profileImageUrl = profileImageUrl,
+                    isOwner = isOwner,
+                    isFollowing = isFollowing,
+                    onOptionClick = onOptionClick,
+                    onFollowClick = onFollowClick
+                )
+            }
 
             if (images.isNotEmpty()) {
-                val pagerState = rememberPagerState(pageCount = { images.size })
+                key(images) {
+                    val pagerState = rememberPagerState(pageCount = { images.size })
 
-                Box {
-                    SNSPostPager(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f),
-                        images = images,
-                        pagerState = pagerState
-                    )
-                }
-
-                if (images.size > 1) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        HorizontalPagerIndicator(
-                            pagerState = pagerState,
-                            activeColor = MaterialTheme.colorScheme.primary,
-                            inactiveColor = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.padding(horizontal = 8.dp)
+                    Box {
+                        SNSPostPager(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f),
+                            images = images,
+                            pagerState = pagerState
                         )
+                    }
+
+                    if (images.size > 1) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            HorizontalPagerIndicator(
+                                pagerState = pagerState,
+                                activeColor = MaterialTheme.colorScheme.primary,
+                                inactiveColor = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                        }
                     }
                 }
             }
 
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                LikeButton(
-                    isLiked = isLiked,
-                    likesCount = likesCount,
-                    onClick = onLikeClick
-                )
-                CommentButton(
-                    commentsCount = comments.size,
-                    onClick = onCommentClick
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    key(isLiked, likesCount) {
+                        LikeButton(
+                            isLiked = isLiked,
+                            likesCount = likesCount,
+                            onClick = onLikeClick
+                        )
+                    }
+                    key(comments.size) {
+                        CommentButton(
+                            commentsCount = comments.size,
+                            onClick = onCommentClick
+                        )
+                    }
+                }
+
+                if (!isOwner) {
+                    key(isSaved) {
+                        SaveButton(
+                            isSaved = isSaved,
+                            onClick = onSavedClick
+                        )
+                    }
+                }
             }
 
             var isTextOverflow by remember { mutableStateOf(false) }
             var expanded by remember { mutableStateOf(false) }
 
             Column(modifier = Modifier.padding(horizontal = 12.dp)) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    BasicRichText(
-                        modifier = Modifier.weight(1f),
-                        state = richTextState,
-                        maxLines = if (expanded) Int.MAX_VALUE else 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        onTextLayout = { textLayoutResult ->
-                            isTextOverflow = textLayoutResult.didOverflowHeight
-                        }
-                    )
-
-                    if (isTextOverflow && !expanded && !richTextState.annotatedString.text.isBlank()) {
-                        Text(
-                            text = stringResource(id = R.string.show_more),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) {
-                                    expanded = true
-                                }
+                key(richTextState.annotatedString) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        BasicRichText(
+                            modifier = Modifier.weight(1f),
+                            state = richTextState,
+                            maxLines = if (expanded) Int.MAX_VALUE else 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            onTextLayout = { textLayoutResult ->
+                                isTextOverflow = textLayoutResult.didOverflowHeight
+                            }
                         )
+
+                        if (isTextOverflow && !expanded && !richTextState.annotatedString.text.isBlank()) {
+                            Text(
+                                text = stringResource(id = R.string.show_more),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ) {
+                                        expanded = true
+                                    }
+                            )
+                        }
                     }
                 }
-                Text(
-                    text = formatRelativeTime(createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                key(createdAt) {
+                    Text(
+                        text = formatRelativeTime(createdAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -256,25 +287,29 @@ fun UserCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Image(
-                painter = rememberAsyncImagePainter(
-                    model = profileImagePath,
-                    error = painterResource(id = R.drawable.user_placeholder),
-                    placeholder = painterResource(id = R.drawable.user_placeholder)
-                ),
-                contentDescription = "profile_image",
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .bounceClick(),
-                contentScale = ContentScale.Crop
-            )
+            key(profileImagePath) {
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        model = profileImagePath,
+                        error = painterResource(id = R.drawable.user_placeholder),
+                        placeholder = painterResource(id = R.drawable.user_placeholder)
+                    ),
+                    contentDescription = "profile_image",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .bounceClick(),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
-            Text(
-                text = username,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
+            key(username) {
+                Text(
+                    text = username,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
             SNSFollowingButton(
                 isFollowing = isFollowing,
@@ -316,12 +351,14 @@ private fun PostCardPreview() {
             isOwner = false,
             isLiked = false,
             isFollowing = false,
+            isSaved = false,
             likesCount = 100,
             createdAt = "2025-01-25T17:14:54.153",
             onOptionClick = {},
             onCommentClick = {},
             onLikeClick = {},
-            onFollowClick = {}
+            onFollowClick = {},
+            onSavedClick = {}
         )
     }
 }
