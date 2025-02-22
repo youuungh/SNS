@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
@@ -59,17 +61,26 @@ import com.ninezero.presentation.component.EmptyMyPostScreen
 import com.ninezero.presentation.component.EmptySavedPostScreen
 import com.ninezero.presentation.component.LoadingProgress
 import com.ninezero.presentation.component.ItemSection
+import com.ninezero.presentation.component.LoadingError
+import com.ninezero.presentation.component.LoadingGridProgress
 import com.ninezero.presentation.component.PullToRefreshLayout
 import com.ninezero.presentation.component.StatisticItem
 import com.ninezero.presentation.component.UserCard
 import com.ninezero.presentation.component.bounceClick
 import com.ninezero.presentation.model.UserCardModel
+import com.ninezero.presentation.util.Constants.APP_BAR_HEIGHT
+import com.ninezero.presentation.util.Constants.BOTTOM_BAR_HEIGHT
+import com.ninezero.presentation.util.Constants.CELL_SIZE
+import com.ninezero.presentation.util.Constants.GRID_SPACING
+import com.ninezero.presentation.util.Constants.STICKY_TAP_HEADER_HEIGHT
+import com.ninezero.presentation.util.calculateGridHeight
 
 @Composable
 fun ProfileScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: ProfileViewModel = hiltViewModel(),
-    onProfileImageChange: () -> Unit
+    onProfileImageChange: () -> Unit,
+    onNavigateToUser: (Long) -> Unit
 ) {
     val state = viewModel.collectAsState().value
     val suggestedUsers = state.suggestedUsers.collectAsLazyPagingItems()
@@ -77,6 +88,9 @@ fun ProfileScreen(
     val savedPosts = state.savedPosts.collectAsLazyPagingItems()
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableStateOf(ProfileTab.POSTS) }
+
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val minGridHeight = screenHeight - ((APP_BAR_HEIGHT + STICKY_TAP_HEADER_HEIGHT + BOTTOM_BAR_HEIGHT).dp)
 
     val pagerState = rememberPagerState(
         initialPage = 0,
@@ -109,9 +123,7 @@ fun ProfileScreen(
     viewModel.collectSideEffect { sideEffect ->
         when (sideEffect) {
             is ProfileSideEffect.ShowSnackbar -> scope.launch {
-                snackbarHostState.showSnackbar(
-                    sideEffect.message
-                )
+                snackbarHostState.showSnackbar(sideEffect.message)
             }
         }
     }
@@ -131,93 +143,121 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        item {
-                            ProfileHeaderSection(
-                                username = state.username,
-                                profileImageUrl = state.profileImageUrl,
-                                postCount = state.postCount,
-                                followerCount = state.followerCount,
-                                followingCount = state.followingCount,
-                                onEditProfileImage = {
-                                    visualMediaPickerLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                },
-                                onEditUsername = { viewModel.showEditUsernameDialog() }
-                            )
-                        }
-
-                        item {
-                            SuggestedUsersSection(
-                                suggestedUsers = suggestedUsers,
-                                isFollowing = state.isFollowing,
-                                onFollowClick = viewModel::handleFollowClick
-                            )
-                        }
-
-                        stickyHeader(key = "sticky_header") {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface)
-                            ) {
-                                TabRow(selectedTabIndex = selectedTab.ordinal) {
-                                    ProfileTab.entries.forEach { tab ->
-                                        Tab(
-                                            text = { Text(stringResource(tab.titleRes)) },
-                                            selected = selectedTab == tab,
-                                            onClick = { selectedTab = tab }
+                    CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            item {
+                                ProfileHeaderSection(
+                                    username = state.username,
+                                    profileImageUrl = state.profileImageUrl,
+                                    postCount = state.postCount,
+                                    followerCount = state.followerCount,
+                                    followingCount = state.followingCount,
+                                    onEditProfileImage = {
+                                        visualMediaPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                         )
-                                    }
-                                }
+                                    },
+                                    onEditUsername = { viewModel.showEditUsernameDialog() }
+                                )
                             }
-                        }
 
-                        item {
-                            HorizontalPager(state = pagerState) { page ->
-                                when (ProfileTab.entries[page]) {
-                                    ProfileTab.POSTS -> {
-                                        when (myPosts.loadState.refresh) {
-                                            is LoadState.Loading -> {
-                                                LoadingProgress(modifier = Modifier.padding(top = 80.dp))
-                                            }
+                            item {
+                                SuggestedUsersSection(
+                                    suggestedUsers = suggestedUsers,
+                                    isFollowing = state.isFollowing,
+                                    onFollowClick = viewModel::handleFollowClick,
+                                    onNavigateToUser = onNavigateToUser
+                                )
+                            }
 
-                                            else -> {
-                                                if (myPosts.itemCount == 0 && myPosts.loadState.refresh is LoadState.NotLoading) {
-                                                    EmptyMyPostScreen()
-                                                } else {
-                                                    MyPostItems(myPosts = myPosts)
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    ProfileTab.SAVED -> {
-                                        when (savedPosts.loadState.refresh) {
-                                            is LoadState.Loading -> {
-                                                LoadingProgress(modifier = Modifier.padding(top = 80.dp))
-                                            }
-
-                                            else -> {
-                                                if (savedPosts.itemCount == 0 && savedPosts.loadState.refresh is LoadState.NotLoading) {
-                                                    EmptySavedPostScreen()
-                                                } else {
-                                                    SavedPostItems(savedPosts = savedPosts)
-                                                }
-                                            }
+                            stickyHeader(key = "sticky_header") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surface)
+                                ) {
+                                    TabRow(selectedTabIndex = selectedTab.ordinal) {
+                                        ProfileTab.entries.forEach { tab ->
+                                            Tab(
+                                                text = { Text(stringResource(tab.titleRes)) },
+                                                selected = selectedTab == tab,
+                                                onClick = { selectedTab = tab }
+                                            )
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        if (myPosts.loadState.append is LoadState.Loading) {
-                            if (myPosts.loadState.refresh !is LoadState.Loading) {
-                                item {
-                                    LoadingProgress()
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(
+                                            min = minGridHeight,
+                                            max = minGridHeight + when (selectedTab) {
+                                                ProfileTab.POSTS -> calculateGridHeight(myPosts.itemCount, screenHeight)
+                                                ProfileTab.SAVED -> calculateGridHeight(savedPosts.itemCount, screenHeight)
+                                            }
+                                        )
+                                ) {
+                                    HorizontalPager(state = pagerState) { page ->
+                                        when (ProfileTab.entries[page]) {
+                                            ProfileTab.POSTS -> {
+                                                when (myPosts.loadState.refresh) {
+                                                    is LoadState.Loading -> {
+                                                        LoadingGridProgress(
+                                                            minGridHeight = minGridHeight,
+                                                            modifier = Modifier.padding(top = 80.dp)
+                                                        )
+                                                    }
+
+                                                    else -> {
+                                                        if (myPosts.itemCount == 0 && myPosts.loadState.refresh is LoadState.NotLoading) {
+                                                            EmptyMyPostScreen(minGridHeight = minGridHeight)
+                                                        } else {
+                                                            MyPostItems(myPosts = myPosts, minGridHeight = minGridHeight)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            ProfileTab.SAVED -> {
+                                                when (savedPosts.loadState.refresh) {
+                                                    is LoadState.Loading -> {
+                                                        LoadingGridProgress(
+                                                            minGridHeight = minGridHeight,
+                                                            modifier = Modifier.padding(top = 80.dp)
+                                                        )
+                                                    }
+
+                                                    is LoadState.Error -> {
+                                                        LoadingError(
+                                                            onRetry = { savedPosts.refresh() },
+                                                            minHeight = minGridHeight,
+                                                            modifier = Modifier.padding(top = 80.dp)
+                                                        )
+                                                    }
+
+                                                    else -> {
+                                                        if (savedPosts.itemCount == 0 && savedPosts.loadState.refresh is LoadState.NotLoading) {
+                                                            EmptySavedPostScreen(minGridHeight = minGridHeight)
+                                                        } else {
+                                                            SavedPostItems(savedPosts = savedPosts, minGridHeight = minGridHeight)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (myPosts.loadState.append is LoadState.Loading) {
+                                if (myPosts.loadState.refresh !is LoadState.Loading) {
+                                    item {
+                                        LoadingProgress()
+                                    }
                                 }
                             }
                         }
@@ -317,7 +357,8 @@ private fun ProfileHeaderSection(
 private fun SuggestedUsersSection(
     suggestedUsers: LazyPagingItems<UserCardModel>,
     isFollowing: Map<Long, Boolean>,
-    onFollowClick: (Long, UserCardModel) -> Unit
+    onFollowClick: (Long, UserCardModel) -> Unit,
+    onNavigateToUser: (Long) -> Unit
 ) {
     if (suggestedUsers.itemCount > 0) {
         ItemSection(
@@ -339,7 +380,8 @@ private fun SuggestedUsersSection(
                                 username = user.userName,
                                 profileImagePath = user.profileImagePath,
                                 isFollowing = isFollowing[user.userId] ?: user.isFollowing,
-                                onFollowClick = { onFollowClick(user.userId, user) }
+                                onFollowClick = { onFollowClick(user.userId, user) },
+                                onUserClick = { onNavigateToUser(user.userId) }
                             )
                         }
                     }
@@ -351,18 +393,19 @@ private fun SuggestedUsersSection(
 
 @Composable
 private fun MyPostItems(
-    myPosts: LazyPagingItems<Post>
+    myPosts: LazyPagingItems<Post>,
+    minGridHeight: Dp
 ) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val gridHeight = calculateGridHeight(myPosts.itemCount, screenHeight)
+
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
         modifier = Modifier
             .fillMaxWidth()
-            .height(
-                ((myPosts.itemCount + 2) / 3 *
-                        (LocalConfiguration.current.screenWidthDp / 3)).dp
-            ),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            .heightIn(min = minGridHeight, max = minGridHeight + gridHeight),
+        columns = GridCells.Adaptive(CELL_SIZE.dp),
+        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
+        verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp)
     ) {
         items(
             count = myPosts.itemCount,
@@ -424,18 +467,19 @@ private fun MyPostItems(
 
 @Composable
 private fun SavedPostItems(
-    savedPosts: LazyPagingItems<Post>
+    savedPosts: LazyPagingItems<Post>,
+    minGridHeight: Dp
 ) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val gridHeight = calculateGridHeight(savedPosts.itemCount, screenHeight)
+
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
         modifier = Modifier
             .fillMaxWidth()
-            .height(
-                ((savedPosts.itemCount + 2/ 3) *
-                        (LocalConfiguration.current.screenWidthDp / 3)).dp
-            ),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+            .heightIn(min = minGridHeight, max = minGridHeight + gridHeight),
+        columns = GridCells.Adaptive(CELL_SIZE.dp),
+        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
+        verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp)
     ) {
         items(
             count = savedPosts.itemCount,
@@ -574,7 +618,8 @@ private fun ProfileScreenPreview() {
                                         username = "User $index",
                                         profileImagePath = null,
                                         isFollowing = index % 2 == 0,
-                                        onFollowClick = {}
+                                        onFollowClick = {},
+                                        onUserClick = {}
                                     )
                                 }
                             }

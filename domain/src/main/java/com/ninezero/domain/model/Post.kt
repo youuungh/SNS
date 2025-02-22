@@ -9,6 +9,7 @@ data class Post(
     val userName: String,
     val profileImageUrl: String,
     val comments: List<Comment>,
+    val commentCount: Int,
     val likesCount: Int,
     val isLiked: Boolean,
     val isFollowing: Boolean,

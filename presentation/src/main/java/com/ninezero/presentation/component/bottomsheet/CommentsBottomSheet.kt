@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,27 +27,43 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 import com.ninezero.domain.model.Comment
 import com.ninezero.presentation.component.SNSIconButton
 import com.ninezero.presentation.component.SNSSurface
 import com.ninezero.presentation.theme.SNSTheme
 import kotlinx.coroutines.launch
-import com.ninezero.presentation.component.CommentInputField
 import com.ninezero.presentation.component.CommentItem
 import com.ninezero.presentation.R
+import com.ninezero.presentation.component.AppendError
+import com.ninezero.presentation.component.LoadingProgress
+import com.ninezero.presentation.component.SNSCommentInputField
+import com.ninezero.presentation.component.ShimmerCommentCards
 
 @Composable
 fun CommentsBottomSheet(
     showBottomSheet: Boolean,
-    comments: List<Comment>,
+    isLoadingComments: Boolean,
+    comments: LazyPagingItems<Comment>,
     isOwner: Boolean,
+    myUserId: Long,
+    replyToComment: Comment? = null,
+    expandedCommentIds: Map<Long, Boolean>,
+    loadingReplyIds: Set<Long>,
+    replies: Map<Long, List<Comment>>,
     onDismiss: () -> Unit,
     onCommentSend: (String) -> Unit,
+    onReplyClick: (Comment) -> Unit,
+    onCancelReply: () -> Unit,
+    onToggleReplies: (Long) -> Unit,
     onDeleteComment: (Comment) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     var isClosing by remember { mutableStateOf(false) }
+
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
         confirmValueChange = {
@@ -59,7 +74,6 @@ fun CommentsBottomSheet(
             }
         }
     )
-    val sortedComments = remember(comments) { comments.sortedByDescending { it.id } }
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -80,7 +94,7 @@ fun CommentsBottomSheet(
             containerColor = MaterialTheme.colorScheme.surface,
             contentWindowInsets = { WindowInsets(0) }
         ) {
-            Column(modifier = Modifier.fillMaxHeight(0.7f)) {
+            Column(modifier = Modifier.fillMaxHeight(0.8f)) {
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
@@ -114,52 +128,83 @@ fun CommentsBottomSheet(
                 )
 
                 SNSSurface(modifier = Modifier.weight(1f)) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        if (sortedComments.isEmpty()) {
-                            item {
+                    when (comments.loadState.refresh) {
+                        is LoadState.Loading -> {
+                            if (isLoadingComments) {
+                                repeat(3) { ShimmerCommentCards() }
+                            }
+                        }
+
+                        else -> {
+                            if (comments.itemCount == 0) {
                                 Text(
                                     text = stringResource(R.string.label_no_comment),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                     modifier = Modifier
-                                        .padding(top = 16.dp)
+                                        .padding(top = 60.dp)
                                         .fillMaxWidth(),
                                     textAlign = TextAlign.Center
                                 )
-                            }
-                        } else {
-                            items(sortedComments) { comment ->
-                                CommentItem(
-                                    comment = comment,
-                                    isOwner = isOwner,
-                                    onDeleteComment = { onDeleteComment(comment) }
-                                )
+                            } else {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                                ) {
+                                    items(
+                                        count = comments.itemCount,
+                                        key = comments.itemKey { it.id },
+                                        contentType = { "comment" }
+                                    ) { index ->
+                                        comments[index]?.let { comment ->
+                                            CommentItem(
+                                                comment = comment,
+                                                isOwner = isOwner,
+                                                myUserId = myUserId,
+                                                isExpanded = expandedCommentIds[comment.id] == true,
+                                                isLoadingReplies = loadingReplyIds.contains(comment.id),
+                                                replies = replies[comment.id] ?: emptyList(),
+                                                onReplyClick = onReplyClick,
+                                                onToggleReplies = onToggleReplies,
+                                                onDeleteComment = onDeleteComment
+                                            )
+                                        }
+                                    }
+
+                                    when (comments.loadState.append) {
+                                        is LoadState.Loading -> {
+                                            item { LoadingProgress() }
+                                        }
+
+                                        is LoadState.Error -> {
+                                            item {
+                                                AppendError(
+                                                    onRetry = { comments.retry() }
+                                                )
+                                            }
+                                        }
+
+                                        else -> Unit
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                SNSSurface(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = 1.dp
-                ) {
-                    CommentInputField(
-                        onSend = { text ->
-                            onCommentSend(text)
-                            scope.launch {
-                                listState.animateScrollToItem(0)
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .navigationBarsPadding()
-                    )
-                }
+                SNSCommentInputField(
+                    hint = R.string.label_input_comment,
+                    replyToComment = replyToComment,
+                    onSend = { text ->
+                        onCommentSend(text)
+                        scope.launch {
+                            listState.animateScrollToItem(0)
+                        }
+                    },
+                    onCancelReply = onCancelReply
+                )
             }
         }
     }
@@ -172,15 +217,50 @@ private fun CommentsBottomSheetContentPreview() {
     val sampleComments = listOf(
         Comment(
             id = 1L,
-            userName = "User One",
+            userId = 1L,
+            text = "첫 번째 댓글입니다.",
+            userName = "UserOne",
             profileImageUrl = null,
-            text = "첫 번째 댓글입니다."
+            parentId = null,
+            parentUserName = null,
+            depth = 0,
+            replyCount = 2,
+            isExpanded = true,
+            replies = listOf(
+                Comment(
+                    id = 2L,
+                    userId = 1L,
+                    text = "첫 번째 댓글의 첫 번째 답글입니다.",
+                    userName = "ReplyUser1",
+                    profileImageUrl = null,
+                    parentId = 1L,
+                    parentUserName = "UserOne",
+                    depth = 1,
+                    replyCount = 0
+                ),
+                Comment(
+                    id = 3L,
+                    userId = 1L,
+                    text = "첫 번째 댓글의 두 번째 답글입니다.",
+                    userName = "ReplyUser2",
+                    profileImageUrl = null,
+                    parentId = 1L,
+                    parentUserName = "UserOne",
+                    depth = 1,
+                    replyCount = 0
+                )
+            )
         ),
         Comment(
-            id = 2L,
-            userName = "User Two",
+            id = 4L,
+            userId = 1L,
+            text = "두 번째 댓글입니다. 조금 더 긴 댓글을 작성해보았습니다.",
+            userName = "UserTwo",
             profileImageUrl = null,
-            text = "두 번째 댓글입니다. 조금 더 긴 댓글을 작성해보았습니다."
+            parentId = null,
+            parentUserName = null,
+            depth = 0,
+            replyCount = 0
         )
     )
 
@@ -222,7 +302,13 @@ private fun CommentsBottomSheetContentPreview() {
                         CommentItem(
                             comment = comment,
                             isOwner = true,
-                            onDeleteComment = { }
+                            myUserId = 1L,
+                            isExpanded = comment.isExpanded,
+                            isLoadingReplies = false,
+                            replies = comment.replies,
+                            onReplyClick = {},
+                            onToggleReplies = {},
+                            onDeleteComment = {}
                         )
                     }
                 }
@@ -232,8 +318,10 @@ private fun CommentsBottomSheetContentPreview() {
                 modifier = Modifier.fillMaxWidth(),
                 elevation = 1.dp
             ) {
-                CommentInputField(
-                    onSend = { },
+                SNSCommentInputField(
+                    hint = R.string.label_input_comment,
+                    onSend = {},
+                    onCancelReply = {},
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }

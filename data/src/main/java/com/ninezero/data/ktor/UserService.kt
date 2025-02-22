@@ -59,6 +59,10 @@ class UserService @Inject constructor(
         }.body()
     }
 
+    suspend fun getUserInfo(userId: Long): CommonResponse<UserDto> {
+        return client.get("users/$userId").body()
+    }
+
     suspend fun followUser(userId: Long): CommonResponse<Long> {
         return client.post("users/$userId/follow").body()
     }

@@ -4,11 +4,13 @@ import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -70,7 +72,7 @@ fun DetailScaffold(
     Scaffold(
         modifier = modifier,
         topBar = {
-            if (displayTitle != null) {
+            displayTitle?.let {
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
@@ -140,6 +142,117 @@ fun DetailScaffold(
 }
 
 @Composable
+fun LeftAlignedDetailScaffold(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    @StringRes titleRes: Int? = null,
+    subtitle: String? = null,
+    profileImageUrl: String? = null,
+    showBackButton: Boolean = false,
+    onBackClick: () -> Unit = {},
+    actions: @Composable () -> Unit = {},
+    snackbarHostState: SnackbarHostState? = null,
+    bottomBar: @Composable () -> Unit = {},
+    isLoading: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    val context = LocalContext.current
+    val displayTitle = when {
+        title != null -> title
+        titleRes != null -> context.getString(titleRes)
+        else -> null
+    }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            displayTitle?.let {
+                TopAppBar(
+                    title = {
+                        Row(
+                            modifier = Modifier.padding(start = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            profileImageUrl?.let {
+                                SNSProfileImage(
+                                    modifier = Modifier
+                                        .padding(end = 12.dp)
+                                        .size(36.dp),
+                                    imageUrl = profileImageUrl
+                                )
+                            }
+
+                            Column {
+                                Text(
+                                    text = displayTitle,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                subtitle?.let {
+                                    Text(
+                                        text = subtitle,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+
+                    },
+                    navigationIcon = {
+                        if (showBackButton) {
+                            IconButton(
+                                onClick = onBackClick,
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        Row(modifier = Modifier.padding(end = 8.dp)) {
+                            actions()
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            }
+        },
+        bottomBar = bottomBar,
+        snackbarHost = {
+            snackbarHostState?.let { state ->
+                SNSSnackbar(
+                    snackbarHostState = state,
+                    modifier = Modifier
+                )
+            }
+        },
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0)
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(paddingValues)
+        ) {
+            content()
+
+            LoadingDialog(
+                isLoading = isLoading,
+                onDismissRequest = {}
+            )
+        }
+    }
+}
+
+@Composable
 fun MainScaffold(
     modifier: Modifier = Modifier,
     title: String? = null,
@@ -159,7 +272,7 @@ fun MainScaffold(
     Scaffold(
         modifier = modifier,
         topBar = {
-            if (displayTitle != null) {
+            displayTitle?.let {
                 TopAppBar(
                     title = {
                         Text(
@@ -205,6 +318,27 @@ private fun DetailScaffoldWithActionsPreview() {
     SNSTheme {
         DetailScaffold(
             title = "Detail Title",
+            showBackButton = true,
+            onBackClick = {},
+            actions = {
+                TextButton(onClick = {}) {
+                    Text(text = "Text")
+                }
+            },
+            content = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun LeftAlignedDetailScaffoldPreview() {
+    SNSTheme {
+        LeftAlignedDetailScaffold(
+            title = "Detail Title",
+            subtitle = "Detail Subtitle",
+            profileImageUrl = null,
             showBackButton = true,
             onBackClick = {},
             actions = {

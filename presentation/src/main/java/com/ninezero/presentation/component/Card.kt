@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.BasicRichText
-import com.ninezero.domain.model.Comment
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.util.formatRelativeTime
@@ -50,15 +49,16 @@ import com.ninezero.presentation.util.formatRelativeTime
 @Composable
 fun PostCard(
     postId: Long,
+    userId: Long,
     username: String,
     profileImageUrl: String? = null,
     images: List<String>,
     richTextState: RichTextState,
-    comments: List<Comment>,
     isOwner: Boolean,
     isLiked: Boolean,
     isFollowing: Boolean,
     isSaved: Boolean,
+    commentCount: Int,
     likesCount: Int,
     createdAt: String,
     onOptionClick: () -> Unit,
@@ -66,6 +66,8 @@ fun PostCard(
     onLikeClick: () -> Unit,
     onFollowClick: () -> Unit,
     onSavedClick: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToUser: (Long) -> Unit
 ) {
     Surface {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -76,7 +78,12 @@ fun PostCard(
                     isOwner = isOwner,
                     isFollowing = isFollowing,
                     onOptionClick = onOptionClick,
-                    onFollowClick = onFollowClick
+                    onFollowClick = onFollowClick,
+                    onProfileImageClick = if (isOwner) {
+                        onNavigateToProfile
+                    } else {
+                        { onNavigateToUser(userId) }
+                    }
                 )
             }
 
@@ -130,9 +137,9 @@ fun PostCard(
                             onClick = onLikeClick
                         )
                     }
-                    key(comments.size) {
+                    key(commentCount) {
                         CommentButton(
-                            commentsCount = comments.size,
+                            commentCount = commentCount,
                             onClick = onCommentClick
                         )
                     }
@@ -271,10 +278,13 @@ fun UserCard(
     profileImagePath: String? = null,
     isFollowing: Boolean,
     onFollowClick: (Long) -> Unit,
+    onUserClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.width(150.dp),
+        modifier = modifier
+            .width(150.dp)
+            .clickable { onUserClick() },
         shape = MaterialTheme.shapes.extraSmall,
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(
@@ -298,7 +308,8 @@ fun UserCard(
                     modifier = Modifier
                         .size(60.dp)
                         .clip(CircleShape)
-                        .bounceClick(),
+                        .bounceClick()
+                        .clickable { onUserClick() },
                     contentScale = ContentScale.Crop
                 )
             }
@@ -329,6 +340,7 @@ private fun PostCardPreview() {
     SNSTheme {
         PostCard(
             postId = 1L,
+            userId = 1L,
             username = "Username",
             profileImageUrl = null,
             images = listOf(
@@ -347,18 +359,20 @@ private fun PostCardPreview() {
                             "이것은 테스트 포스트입니다. 매우 긴 텍스트를 넣어서 더보기가 표시되는지 확인해보겠습니다."
                 )
             },
-            comments = emptyList(),
+            commentCount = 123,
             isOwner = false,
             isLiked = false,
             isFollowing = false,
             isSaved = false,
-            likesCount = 100,
+            likesCount = 123,
             createdAt = "2025-01-25T17:14:54.153",
             onOptionClick = {},
             onCommentClick = {},
             onLikeClick = {},
             onFollowClick = {},
-            onSavedClick = {}
+            onSavedClick = {},
+            onNavigateToProfile = {},
+            onNavigateToUser = {}
         )
     }
 }
@@ -373,7 +387,8 @@ private fun UserCardPreview() {
             username = "Username",
             profileImagePath = null,
             isFollowing = false,
-            onFollowClick = {}
+            onFollowClick = {},
+            onUserClick = {}
         )
     }
 }

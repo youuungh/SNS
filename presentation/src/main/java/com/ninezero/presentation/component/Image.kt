@@ -35,13 +35,19 @@ import com.ninezero.presentation.theme.SNSTheme
 fun SNSProfileImage(
     modifier: Modifier = Modifier,
     imageUrl: String? = null,
-    onClick: () -> Unit = {}
+    onClick: (() -> Unit)? = null
 ) {
     Box {
         Image(
             modifier = modifier
                 .clip(CircleShape)
-                .clickable { onClick() },
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                ),
             painter = rememberAsyncImagePainter(
                 model = imageUrl,
                 error = painterResource(id = R.drawable.user_placeholder),
@@ -110,11 +116,13 @@ private fun SNSProfileImagePreview() {
             Row {
                 SNSProfileImage(
                     modifier = Modifier.size(150.dp),
-                    imageUrl = null
+                    imageUrl = null,
+                    onClick = {}
                 )
                 SNSEditProfileImage(
                     modifier = Modifier.size(150.dp),
-                    imageUrl = null
+                    imageUrl = null,
+                    onClick = {}
                 )
             }
         }

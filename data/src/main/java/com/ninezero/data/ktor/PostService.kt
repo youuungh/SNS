@@ -1,7 +1,9 @@
 package com.ninezero.data.ktor
 
 import com.ninezero.data.model.CommonResponse
+import com.ninezero.data.model.dto.CommentDto
 import com.ninezero.data.model.dto.PostDto
+import com.ninezero.data.model.param.CommentParam
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -66,6 +68,13 @@ class PostService @Inject constructor(
         }.body()
     }
 
+    suspend fun getPostsById(userId: Long, page: Int, size: Int): CommonResponse<List<PostDto>> {
+        return client.get("boards/user/$userId") {
+            parameter("page", page)
+            parameter("size", size)
+        }.body()
+    }
+
     suspend fun updatePost(id: Long, requestBody: Any): CommonResponse<Long> {
         return client.patch("boards/$id") {
             setBody(requestBody)
@@ -76,7 +85,18 @@ class PostService @Inject constructor(
         return client.delete("boards/$id").body()
     }
 
-    suspend fun addComment(postId: Long, requestBody: Any): CommonResponse<Long> {
+    suspend fun getComments(postId: Long, page: Int, size: Int): CommonResponse<List<CommentDto>> {
+        return client.get("boards/$postId/comments") {
+            parameter("page", page)
+            parameter("size", size)
+        }.body()
+    }
+
+    suspend fun getReplies(postId: Long, parentId: Long): CommonResponse<List<CommentDto>> {
+        return client.get("boards/$postId/comments/$parentId/replies").body()
+    }
+
+    suspend fun addComment(postId: Long, requestBody: CommentParam): CommonResponse<Long> {
         return client.post("boards/$postId/comments") {
             setBody(requestBody)
         }.body()

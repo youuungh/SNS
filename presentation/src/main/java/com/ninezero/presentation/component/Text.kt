@@ -1,38 +1,30 @@
 package com.ninezero.presentation.component
 
 import android.content.res.Configuration
+import androidx.annotation.StringRes
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -40,6 +32,7 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ninezero.domain.model.Comment
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.LocalTheme
 import com.ninezero.presentation.theme.SNSTheme
@@ -127,7 +120,177 @@ fun SNSTextField(
 }
 
 @Composable
-fun CommentInputField(
+fun SNSCommentInputField(
+    @StringRes hint: Int,
+    replyToComment: Comment? = null,
+    onSend: (String) -> Unit,
+    onCancelReply: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        AnimatedVisibility(
+            visible = replyToComment != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            replyToComment?.let { comment ->
+                SNSSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SNSProfileImage(
+                                modifier = Modifier.size(24.dp),
+                                imageUrl = comment.profileImageUrl
+                            )
+
+                            Text(
+                                text = stringResource(
+                                    id = R.string.replying_to_user,
+                                    comment.userName
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        SNSIconButton(
+                            onClick = onCancelReply,
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = null
+                        )
+                    }
+                }
+            }
+        }
+
+        SNSSurface(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = 8.dp
+        ) {
+            val isDarkTheme = LocalTheme.current
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
+            val focusRequester = remember { FocusRequester() }
+
+            var text by remember { mutableStateOf("") }
+
+            val backgroundColor = if (isDarkTheme) {
+                snsCommentDarkBackground
+            } else {
+                snsCommentLightBackground
+            }
+
+            val cursorColor = if (isDarkTheme) {
+                snsCursorDark
+            } else {
+                snsCursorLight
+            }
+
+            LaunchedEffect(replyToComment) {
+                text = ""
+                replyToComment?.let {
+                    focusRequester.requestFocus()
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .navigationBarsPadding(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .background(
+                            color = backgroundColor,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .padding(horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (replyToComment != null) {
+                        Text(
+                            text = "@${replyToComment.userName} ",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                lineHeight = 44.sp,
+                                baselineShift = BaselineShift.None
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        BasicTextField(
+                            value = text,
+                            onValueChange = { text = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 44.sp,
+                                baselineShift = BaselineShift.None
+                            ),
+                            cursorBrush = SolidColor(cursorColor),
+                            singleLine = true,
+                            decorationBox = { innerTextField ->
+                                Box(contentAlignment = Alignment.CenterStart) {
+                                    if (text.isEmpty() && replyToComment == null) {
+                                        Text(
+                                            text = stringResource(id = hint),
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                lineHeight = 44.sp,
+                                                baselineShift = BaselineShift.None
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
+                    }
+                }
+
+                Icon(
+                    painter = painterResource(R.drawable.ic_send),
+                    contentDescription = "send",
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable(
+                            enabled = text.isNotEmpty(),
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            onSend(text)
+                            text = ""
+                        }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SNSMessageInputField(
+    @StringRes hint: Int,
     onSend: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -188,7 +351,7 @@ fun CommentInputField(
                     ) {
                         if (text.isEmpty()) {
                             Text(
-                                text = "댓글을 입력하세요",
+                                text = stringResource(id = hint),
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     lineHeight = 44.sp,
                                     baselineShift = BaselineShift.None
@@ -246,6 +409,27 @@ fun SNSSmallText(
     }
 }
 
+@Composable
+fun SNSMediumText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(24.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -253,6 +437,17 @@ private fun SNSSmallTextPreview() {
     SNSTheme {
         Surface {
             SNSSmallText(text = "Text")
+        }
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SNSMediumTextPreview() {
+    SNSTheme {
+        Surface {
+            SNSMediumText(text = "Text")
         }
     }
 }
@@ -305,9 +500,38 @@ private fun SNSTextFieldPreview() {
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun CommentInputFieldPreview() {
+private fun SNSCommentInputFieldPreview() {
     SNSTheme {
-        CommentInputField(
+        Column(modifier = Modifier.padding(16.dp)) {
+            val sampleComment = Comment(
+                id = 1L,
+                userId = 1L,
+                text = "Sample comment",
+                userName = "SampleUser",
+                profileImageUrl = null,
+                parentId = null,
+                parentUserName = null,
+                depth = 0,
+                replyCount = 0
+            )
+
+            SNSCommentInputField(
+                hint = R.string.label_input_comment,
+                replyToComment = sampleComment,
+                onSend = {},
+                onCancelReply = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SNSMessageInputFieldPreview() {
+    SNSTheme {
+        SNSMessageInputField(
+            hint = R.string.label_input_comment,
             onSend = {}
         )
     }

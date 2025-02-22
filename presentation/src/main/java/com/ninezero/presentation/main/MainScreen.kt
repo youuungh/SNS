@@ -40,6 +40,7 @@ import com.ninezero.presentation.profile.ProfileScreen
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSIconButton
+import com.ninezero.presentation.message.MessageScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -49,6 +50,23 @@ fun MainScreen(
     onNavigateToPost: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit
+) {
+    MainNavHost(
+        viewModel = viewModel,
+        onNavigateToPost = onNavigateToPost,
+        onNavigateToSettings = onNavigateToSettings,
+        onNavigateToLogin = onNavigateToLogin
+    )
+}
+
+@Composable
+fun MainContent(
+    viewModel: MainViewModel,
+    onNavigateToPost: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    onNavigateToUser: (Long) -> Unit,
+    onNavigateToChat: (otherUserId: Long, roomId: String?, otherUserLoginId: String, otherUserName: String, otherUserProfilePath: String?, myUserId: Long) -> Unit
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -84,6 +102,8 @@ fun MainScreen(
 
     val title = when (currentRoute) {
         MainRoute.BottomNavItem.Feed.route -> stringResource(R.string.feed)
+        MainRoute.BottomNavItem.Search.route -> stringResource(R.string.search)
+        MainRoute.BottomNavItem.Message.route -> stringResource(R.string.message)
         MainRoute.BottomNavItem.Profile.route -> stringResource(R.string.profile)
         else -> ""
     }
@@ -133,13 +153,28 @@ fun MainScreen(
             composable(MainRoute.BottomNavItem.Feed.route) {
                 FeedScreen(
                     snackbarHostState = snackbarHostState,
-                    onNavigateToLogin = onNavigateToLogin
+                    onNavigateToLogin = onNavigateToLogin,
+                    onNavigateToProfile = { navController.navigate(MainRoute.BottomNavItem.Profile.route) },
+                    onNavigateToUser = onNavigateToUser
                 )
             }
+
+            composable(MainRoute.BottomNavItem.Search.route) {
+                // SearchScreen
+            }
+
+            composable(MainRoute.BottomNavItem.Message.route) {
+                MessageScreen(
+                    snackbarHostState = snackbarHostState,
+                    onNavigateToChat = onNavigateToChat
+                )
+            }
+
             composable(MainRoute.BottomNavItem.Profile.route) {
                 ProfileScreen(
                     snackbarHostState = snackbarHostState,
-                    onProfileImageChange = viewModel::load
+                    onProfileImageChange = viewModel::load,
+                    onNavigateToUser = onNavigateToUser
                 )
             }
         }

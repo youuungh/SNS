@@ -33,7 +33,8 @@ fun PostHeader(
     isOwner: Boolean,
     isFollowing: Boolean,
     onOptionClick: () -> Unit,
-    onFollowClick: () -> Unit
+    onFollowClick: () -> Unit,
+    onProfileImageClick: () -> Unit
 ) {
     Row(
         modifier = modifier
@@ -51,7 +52,8 @@ fun PostHeader(
                 modifier = Modifier
                     .padding(8.dp)
                     .size(32.dp),
-                imageUrl = profileImageUrl
+                imageUrl = profileImageUrl,
+                onClick = onProfileImageClick
             )
             Text(
                 text = username.replaceFirstChar { it.uppercase() },
@@ -102,14 +104,16 @@ private fun PostHeaderPreview() {
                     isOwner = true,
                     isFollowing = true,
                     onOptionClick = {},
-                    onFollowClick = {}
+                    onFollowClick = {},
+                    onProfileImageClick = {}
                 )
                 PostHeader(
                     username = "UsernameUsernameUsernameUsernameUsername",
                     isOwner = false,
                     isFollowing = false,
                     onOptionClick = {},
-                    onFollowClick = {}
+                    onFollowClick = {},
+                    onProfileImageClick = {}
                 )
             }
         }

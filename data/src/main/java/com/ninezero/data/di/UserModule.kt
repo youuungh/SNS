@@ -1,10 +1,12 @@
 package com.ninezero.data.di
 
+import com.ninezero.data.usecase.ChatUseCaseImpl
 import com.ninezero.data.usecase.FeedUseCaseImpl
 import com.ninezero.data.usecase.FileUseCaseImpl
 import com.ninezero.data.usecase.PostUseCaseImpl
 import com.ninezero.data.usecase.ThemeUseCaseImpl
 import com.ninezero.data.usecase.UserUseCaseImpl
+import com.ninezero.domain.usecase.ChatUseCase
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.FileUseCase
 import com.ninezero.domain.usecase.PostUseCase
@@ -29,6 +31,9 @@ abstract class UserModule {
 
     @Binds
     abstract fun bindFeedUseCase(feedUseCaseImpl: FeedUseCaseImpl): FeedUseCase
+
+    @Binds
+    abstract fun bindChatUseCase(chatUseCaseImpl: ChatUseCaseImpl): ChatUseCase
 
     @Binds
     abstract fun bindThemeUseCase(themeUseCaseImpl: ThemeUseCaseImpl): ThemeUseCase

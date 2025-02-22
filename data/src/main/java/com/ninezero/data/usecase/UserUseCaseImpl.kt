@@ -330,6 +330,23 @@ class UserUseCaseImpl @Inject constructor(
         ApiResult.Error.NetworkError("유저 목록을 불러오는데 실패했습니다")
     }
 
+    override suspend fun getUserInfo(userId: Long): ApiResult<User> = try {
+        if (networkRepository.isNetworkAvailable()) {
+            val response = userService.getUserInfo(userId)
+            if (response.result == "SUCCESS") {
+                response.data?.let {
+                    ApiResult.Success(it.toDomain())
+                } ?: ApiResult.Error.ServerError("데이터가 없습니다")
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "사용자 정보를 가져오는데 실패했습니다")
+            }
+        } else {
+            ApiResult.Error.NetworkError("네트워크 연결을 확인해주세요")
+        }
+    } catch (e: Exception) {
+        e.handleNetworkException()
+    }
+
     override suspend fun followUser(userId: Long): ApiResult<Long> {
         return try {
             checkNetwork()?.let { return it } // 네트워크 상태 확인

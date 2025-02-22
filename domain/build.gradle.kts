@@ -16,7 +16,6 @@ kotlin {
 }
 
 dependencies {
-    // Serialization
     implementation(libs.kotlinx.serialization.json)
 
     //Paging

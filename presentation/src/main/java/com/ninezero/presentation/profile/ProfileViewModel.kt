@@ -13,7 +13,6 @@ import com.ninezero.domain.model.Post
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
-import com.ninezero.presentation.model.PostCardModel
 import com.ninezero.presentation.model.UserCardModel
 import com.ninezero.presentation.model.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +43,7 @@ class ProfileViewModel @Inject constructor(
                 .collect { isOnline ->
                     if (isOnline && !isInitialLoad) {
                         load()
+                        intent { reduce { state.copy(isSavedPostsLoaded = false) } }
                     }
                 }
         }
@@ -73,9 +73,9 @@ class ProfileViewModel @Inject constructor(
                     }
 
                     if (isOnline) {
-                        when (val result = userUseCase.getAllUsers()) {
+                        when (val userResult = userUseCase.getAllUsers()) {
                             is ApiResult.Success -> {
-                                val suggestedUsers = result.data
+                                val suggestedUsers = userResult.data
                                     .map {
                                         it.map { user -> user.toModel() }
                                             .filter { user ->
@@ -86,7 +86,7 @@ class ProfileViewModel @Inject constructor(
 
                                 reduce { state.copy(suggestedUsers = suggestedUsers) }
                             }
-                            is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
+                            is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(userResult.message))
                         }
                     } else {
                         postSideEffect(ProfileSideEffect.ShowSnackbar("네트워크 연결 오류"))
@@ -185,36 +185,6 @@ class ProfileViewModel @Inject constructor(
                     reduce {
                         state.copy(
                             isFollowing = state.isFollowing + (userId to true)
-                        )
-                    }
-                }
-
-                is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
-            }
-        }
-    }
-
-    fun handleSavedClick(postId: Long, post: PostCardModel) = intent {
-        val isSaved = state.isSaved[postId] ?: post.isSaved
-
-        if (isSaved) {
-            when (val result = feedUseCase.unsavePost(postId)) {
-                is ApiResult.Success -> {
-                    reduce {
-                        state.copy(
-                            isSaved = state.isSaved + (postId to false)
-                        )
-                    }
-                }
-
-                is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
-            }
-        } else {
-            when (val result = feedUseCase.savePost(postId)) {
-                is ApiResult.Success -> {
-                    reduce {
-                        state.copy(
-                            isSaved = state.isSaved + (postId to true)
                         )
                     }
                 }

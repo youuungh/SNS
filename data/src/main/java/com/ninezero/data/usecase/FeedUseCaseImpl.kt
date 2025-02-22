@@ -3,26 +3,24 @@ package com.ninezero.data.usecase
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import com.ninezero.data.db.post.saved.SavedPostPagingSource
+import com.ninezero.data.db.post.paging.CommentPagingSource
+import com.ninezero.data.db.post.paging.SavedPostPagingSource
+import com.ninezero.data.db.post.paging.UserPostPagingSource
 import com.ninezero.data.model.param.CommentParam
 import com.ninezero.data.ktor.PostService
-import com.ninezero.data.model.param.ContentParam
-import com.ninezero.data.model.param.PostParam
+import com.ninezero.data.model.dto.toDomain
 import com.ninezero.data.model.param.UpdatePostParam
 import com.ninezero.data.repository.PostRepositoryImpl.Companion.PAGE_SIZE
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
+import com.ninezero.domain.model.Comment
 import com.ninezero.domain.model.Post
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.repository.PostRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
 import timber.log.Timber
 import javax.inject.Inject
@@ -102,6 +100,12 @@ class FeedUseCaseImpl @Inject constructor(
     private val postRepository: PostRepository,
     private val networkRepository: NetworkRepository
 ) : FeedUseCase {
+
+    companion object {
+        const val COMMENT_PAGE_SIZE = 20
+        const val REPLY_PAGE_SIZE = 10
+    }
+
     override suspend fun getPosts(): ApiResult<Flow<PagingData<Post>>> = try {
         ApiResult.Success(postRepository.getPosts())
     } catch (e: Exception) {
@@ -122,11 +126,27 @@ class FeedUseCaseImpl @Inject constructor(
                 PagingConfig(
                     pageSize = PAGE_SIZE,
                     initialLoadSize = PAGE_SIZE * 2,
-                    prefetchDistance = 2,
-                    enablePlaceholders = true
+                    prefetchDistance = 2
                 )
             ) {
                 SavedPostPagingSource(postService)
+            }.flow
+        )
+    } catch (e: Exception) {
+        Timber.e("Network Error: ${e.message}")
+        ApiResult.Error.NetworkError("게시물을 불러오는데 실패했습니다")
+    }
+
+    override suspend fun getPostsById(userId: Long): ApiResult<Flow<PagingData<Post>>> = try {
+        ApiResult.Success(
+            Pager(
+                PagingConfig(
+                    pageSize = PAGE_SIZE,
+                    initialLoadSize = PAGE_SIZE * 2,
+                    prefetchDistance = 2
+                )
+            ) {
+                UserPostPagingSource(postService, userId)
             }.flow
         )
     } catch (e: Exception) {
@@ -177,29 +197,57 @@ class FeedUseCaseImpl @Inject constructor(
         }
     }
 
-    override suspend fun addComment(
-        postId: Long,
-        text: String
-    ): ApiResult<Long> {
-        return try {
-            checkNetwork()?.let { return it } // 네트워크 상태 확인
+    override suspend fun getComments(postId: Long): ApiResult<Flow<PagingData<Comment>>> = try {
+        ApiResult.Success(
+            Pager(
+                PagingConfig(
+                    pageSize = COMMENT_PAGE_SIZE,
+                    initialLoadSize = COMMENT_PAGE_SIZE,
+                    prefetchDistance = 2,
+                    enablePlaceholders = false
+                )
+            ) {
+                CommentPagingSource(postService, postId)
+            }.flow
+        )
+    } catch (e: Exception) {
+        Timber.e("Network Error: ${e.message}")
+        ApiResult.Error.NetworkError("댓글을 불러오는데 실패했습니다")
+    }
 
-            val commentParam = CommentParam(text)
-            val response = postService.addComment(postId = postId, requestBody = commentParam)
+    override suspend fun getReplies(postId: Long, parentId: Long): ApiResult<List<Comment>> {
+        return try {
+            checkNetwork()?.let { return it }
+
+            val response = postService.getReplies(postId, parentId)
             if (response.result == "SUCCESS") {
-                ApiResult.Success(response.data!!)
+                ApiResult.Success(response.data?.map { it.toDomain() } ?: emptyList())
             } else {
-                ApiResult.Error.ServerError(response.errorMessage ?: "댓글 작성에 실패했습니다")
+                ApiResult.Error.ServerError(response.errorMessage ?: "답글을 불러오는데 실패했습니다")
             }
         } catch (e: Exception) {
             e.handleNetworkException()
         }
     }
 
-    override suspend fun deleteComment(
-        postId: Long,
-        commentId: Long
-    ): ApiResult<Long> {
+    override suspend fun addComment(postId: Long, text: String, parentId: Long?): ApiResult<Long> {
+        return try {
+            checkNetwork()?.let { return it } // 네트워크 상태 확인
+
+            val commentParam = CommentParam(comment = text, parentId = parentId)
+            val response = postService.addComment(postId = postId, requestBody = commentParam)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data!!)
+            } else {
+                val message = if (parentId != null) "답글 작성에 실패했습니다" else "댓글 작성에 실패했습니다"
+                ApiResult.Error.ServerError(response.errorMessage ?: message)
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun deleteComment(postId: Long, commentId: Long): ApiResult<Long> {
         return try {
             checkNetwork()?.let { return it } // 네트워크 상태 확인
 

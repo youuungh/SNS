@@ -39,6 +39,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.LocalTheme
@@ -85,13 +86,38 @@ fun TopFAB(
 
 @Composable
 fun LoadingProgress(
+    modifier: Modifier = Modifier,
+    fullScreen: Boolean = true
+) {
+    Box(
+        modifier = modifier.then(
+            if (fullScreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier.fillMaxWidth()
+            }
+        ).padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(if (fullScreen) 36.dp else 24.dp),
+            strokeWidth = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f),
+            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        )
+    }
+}
+
+@Composable
+fun LoadingGridProgress(
+    minGridHeight: Dp,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .height(minGridHeight),
+        contentAlignment = Alignment.TopCenter
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(36.dp),
@@ -103,11 +129,57 @@ fun LoadingProgress(
 }
 
 @Composable
+fun LoadingError(
+    onRetry: () -> Unit,
+    minHeight: Dp? = null,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .then(
+                when {
+                    minHeight != null -> Modifier.height(minHeight)
+                    else -> Modifier.fillMaxSize()
+                }
+            )
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onRetry
+            )
+            .fillMaxWidth(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .size(36.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(36.dp),
+                strokeWidth = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f),
+                trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                progress = { 1f }
+            )
+
+            Icon(
+                painter = painterResource(R.drawable.ic_refresh),
+                contentDescription = stringResource(R.string.retry),
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
+
+@Composable
 fun EmptyFeedScreen() {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(300)  // 300ms 딜레이
+        delay(300)
         visible = true
     }
 
@@ -129,11 +201,11 @@ fun EmptyFeedScreen() {
 }
 
 @Composable
-fun EmptyMyPostScreen() {
+fun EmptyMyPostScreen(minGridHeight: Dp) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(300)  // 300ms 딜레이
+        delay(300)
         visible = true
     }
 
@@ -143,26 +215,27 @@ fun EmptyMyPostScreen() {
     ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 100.dp),
+                .fillMaxWidth()
+                .height(minGridHeight),
             contentAlignment = Alignment.TopCenter
         ) {
             Text(
                 text = stringResource(R.string.label_empty_my_post),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 100.dp)
             )
         }
     }
 }
 
 @Composable
-fun EmptySavedPostScreen() {
+fun EmptySavedPostScreen(minGridHeight: Dp) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(300)  // 300ms 딜레이
+        delay(300)
         visible = true
     }
 
@@ -172,16 +245,78 @@ fun EmptySavedPostScreen() {
     ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 100.dp),
+                .fillMaxWidth()
+                .height(minGridHeight),
             contentAlignment = Alignment.TopCenter
         ) {
             Text(
                 text = stringResource(R.string.label_empty_saved_post),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 100.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun EmptyUserPostScreen(minGridHeight: Dp) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(minGridHeight),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Text(
+                text = stringResource(R.string.label_empty_user_post),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 100.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptyMessageScreen() {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        visible = true
+    }
+
+    SNSSurface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(300))
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.label_empty_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }
@@ -333,10 +468,12 @@ private fun AppendEndPreview() {
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun EmptyFeedScreenPreview() {
+private fun LoadingErrorPreview() {
     SNSTheme {
         Surface {
-            EmptyFeedScreen()
+            LoadingError(
+                onRetry = {}
+            )
         }
     }
 }
@@ -344,10 +481,10 @@ private fun EmptyFeedScreenPreview() {
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun EmptyMyPostScreenPreview() {
+private fun EmptyFeedScreenPreview() {
     SNSTheme {
         Surface {
-            EmptyMyPostScreen()
+            EmptyFeedScreen()
         }
     }
 }

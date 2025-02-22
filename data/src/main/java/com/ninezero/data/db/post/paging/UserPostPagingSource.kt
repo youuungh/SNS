@@ -1,16 +1,15 @@
-package com.ninezero.data.db.post.saved
+package com.ninezero.data.db.post.paging
 
 import androidx.paging.PagingSource
-import androidx.paging.PagingSource.LoadParams
-import androidx.paging.PagingSource.LoadResult
 import androidx.paging.PagingState
 import com.ninezero.data.ktor.PostService
 import com.ninezero.data.model.dto.toDomain
 import com.ninezero.domain.model.Post
 import javax.inject.Inject
 
-class SavedPostPagingSource @Inject constructor(
-    private val postService: PostService
+class UserPostPagingSource @Inject constructor(
+    private val postService: PostService,
+    private val userId: Long
 ) : PagingSource<Int, Post>() {
     override fun getRefreshKey(state: PagingState<Int, Post>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
@@ -23,7 +22,7 @@ class SavedPostPagingSource @Inject constructor(
         return try {
             val page = params.key ?: 1
 
-            val response = postService.getSavedPosts(page, params.loadSize)
+            val response = postService.getPostsById(userId, page, params.loadSize)
             val posts = response.data?.map { it.toDomain() } ?: emptyList()
 
             LoadResult.Page(

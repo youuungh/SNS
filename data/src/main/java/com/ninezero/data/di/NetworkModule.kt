@@ -1,5 +1,6 @@
 package com.ninezero.data.di
 
+import com.ninezero.data.ktor.ChatService
 import com.ninezero.data.ktor.FileService
 import com.ninezero.data.ktor.PostService
 import com.ninezero.data.ktor.TokenInterceptor
@@ -10,72 +11,79 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.cio.endpoint
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import javax.inject.Singleton
 
 const val BASE_URL = "http://10.0.2.2:8080/"
 
+/** retrofit
+@Provides
+fun provideOkHttpClient(interceptor: TokenInterceptor): OkHttpClient {
+return OkHttpClient.Builder()
+.addInterceptor(interceptor)
+.build()
+}
+
+@Provides
+fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+val converterFactory = Json {
+ignoreUnknownKeys = true
+}.asConverterFactory("application/json; charset=UTF8".toMediaType())
+
+return Retrofit.Builder()
+.baseUrl("${BASE_URL}api/")
+.addConverterFactory(converterFactory)
+.client(okHttpClient)
+.build()
+}
+
+@Provides
+fun provideUserService(retrofit: Retrofit): UserService {
+return retrofit.create(UserService::class.java)
+}
+
+@Provides
+fun provideFileService(retrofit: Retrofit): FileService {
+return retrofit.create(FileService::class.java)
+}
+
+@Provides
+fun providePostService(retrofit: Retrofit): PostService {
+return retrofit.create(PostService::class.java)
+}
+ */
+
 @Module
 @InstallIn(SingletonComponent::class)
 class NetworkModule {
-
-    /** retrofit
-    @Provides
-    fun provideOkHttpClient(interceptor: TokenInterceptor): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(interceptor)
-            .build()
-    }
-
-    @Provides
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
-        val converterFactory = Json {
-            ignoreUnknownKeys = true
-        }.asConverterFactory("application/json; charset=UTF8".toMediaType())
-
-        return Retrofit.Builder()
-            .baseUrl("${BASE_URL}api/")
-            .addConverterFactory(converterFactory)
-            .client(okHttpClient)
-            .build()
-    }
-
-    @Provides
-    fun provideUserService(retrofit: Retrofit): UserService {
-    return retrofit.create(UserService::class.java)
-    }
-
-    @Provides
-    fun provideFileService(retrofit: Retrofit): FileService {
-    return retrofit.create(FileService::class.java)
-    }
-
-    @Provides
-    fun providePostService(retrofit: Retrofit): PostService {
-    return retrofit.create(PostService::class.java)
-    }
-    */
-
+    @OptIn(ExperimentalSerializationApi::class)
     @Provides
     @Singleton
     fun provideHttpClient(tokenInterceptor: TokenInterceptor): HttpClient {
-        return HttpClient(Android) {
+        return HttpClient(CIO) {
             // JSON 직렬화
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
                     prettyPrint = true
                     isLenient = true
+                    encodeDefaults = true
+                    explicitNulls = false
                 })
             }
 
@@ -99,10 +107,32 @@ class NetworkModule {
                 }
             }
 
-            // 엔진
+            // WebSocket
+            install(WebSockets) {
+                pingInterval = 10_000
+                maxFrameSize = Long.MAX_VALUE
+                contentConverter = KotlinxWebsocketSerializationConverter(Json {
+                    ignoreUnknownKeys = true
+                    prettyPrint = true
+                    isLenient = true
+                    encodeDefaults = true
+                    explicitNulls = false
+                })
+            }
+
+            // Android
+//            engine {
+//                connectTimeout = 10_000
+//                socketTimeout = 15_000
+//            }
+
+            // CIO
             engine {
-                connectTimeout = 10_000
-                socketTimeout = 15_000
+                requestTimeout = 10_000
+                endpoint {
+                    connectTimeout = 10_000
+                    socketTimeout = 15_000
+                }
             }
         }
     }
@@ -123,5 +153,11 @@ class NetworkModule {
     @Singleton
     fun providePostService(client: HttpClient): PostService {
         return PostService(client)
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatService(client: HttpClient): ChatService {
+        return ChatService(client)
     }
 }

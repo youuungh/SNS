@@ -8,32 +8,32 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import com.ninezero.presentation.R
+import java.time.format.TextStyle
+import java.util.Locale
 
-@Composable
-fun Modifier.onScroll(
-    onScroll: (Float, Float) -> Unit
-) = this.nestedScroll(
-    remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                onScroll(available.x, available.y)
-                return Offset.Zero
-            }
-        }
+// Date Formatters
+private val ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
+private val MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("MM월 dd일")
+
+// Date Time Utils
+private fun parseChatDateTime(dateTime: String): LocalDateTime? {
+    return try {
+        LocalDateTime.parse(dateTime, ISO_FORMATTER)
+    } catch (e: Exception) {
+        null
     }
-)
+}
 
 @Composable
 fun formatRelativeTime(createdAt: String): String {
-    val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
-    val createdAtTime = LocalDateTime.parse(createdAt, formatter)
+    val createdAtTime = LocalDateTime.parse(createdAt, ISO_FORMATTER)
     val now = LocalDateTime.now()
 
     val minutesDiff = ChronoUnit.MINUTES.between(createdAtTime, now)
@@ -53,3 +53,83 @@ fun formatRelativeTime(createdAt: String): String {
         else -> stringResource(R.string.years_ago, yearsDiff)
     }
 }
+
+@Composable
+fun formatChatDateTime(dateTime: String): String {
+    val dt = parseChatDateTime(dateTime) ?: return dateTime
+    val now = LocalDateTime.now()
+    val daysDiff = ChronoUnit.DAYS.between(dt.toLocalDate(), now.toLocalDate())
+    val amPm = stringResource(if (dt.hour < 12) R.string.chat_time_am else R.string.chat_time_pm)
+
+    val hour = if (dt.hour > 12) dt.hour - 12 else if (dt.hour == 0) 12 else dt.hour
+    val timeStr = "$hour:${String.format("%02d", dt.minute)}"
+
+    return when {
+        // 오늘 h:mm 오전/오후
+        daysDiff == 0L -> stringResource(R.string.chat_time_today, timeStr, amPm)
+
+        // 어제 h:mm 오전/오후
+        daysDiff == 1L -> stringResource(R.string.chat_time_yesterday, timeStr, amPm)
+
+        // 일주일 이내: 화 h:mm 오전/오후
+        daysDiff < 7L -> {
+            val dayName = dt.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.KOREAN)
+            stringResource(R.string.chat_time_day, dayName, timeStr, amPm)
+        }
+
+        // 이번 달/올해: MMM월 dd일 h:mm 오전/오후
+        dt.year == now.year -> {
+            stringResource(R.string.chat_time_date, dt.format(MONTH_DAY_FORMATTER), timeStr, amPm)
+        }
+
+        // 작년 이전: yyyy년 MMM월 dd일 h:mm 오전/오후
+        else -> {
+            stringResource(R.string.chat_time_date, dt.format(DATE_FORMATTER), timeStr, amPm)
+        }
+    }
+}
+
+@Composable
+fun formatSimpleChatDateTime(dateTime: String): String {
+    return LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+}
+
+@Composable
+fun formatChatTime(dateTime: String): String {
+    val dt = parseChatDateTime(dateTime) ?: return dateTime
+    val amPm = stringResource(if (dt.hour < 12) R.string.chat_time_am else R.string.chat_time_pm)
+    val hour = if (dt.hour > 12) dt.hour - 12 else if (dt.hour == 0) 12 else dt.hour
+
+    return stringResource(R.string.chat_time, amPm, hour, dt.minute)
+}
+
+// Layout Utils
+fun calculateGridHeight(
+    itemCount: Int,
+    screenHeight: Dp,
+    columnsCount: Int = (screenHeight / (Constants.CELL_SIZE + Constants.GRID_SPACING).dp)
+        .toInt()
+        .coerceAtLeast(1)
+): Dp {
+    val rowCount = (itemCount + columnsCount - 1) / columnsCount
+    return (Constants.CELL_SIZE * rowCount + Constants.GRID_SPACING * (rowCount - 1)).dp
+}
+
+// Modifier Utils
+@Composable
+fun Modifier.onScroll(
+    onScroll: (Float, Float) -> Unit
+) = this.nestedScroll(
+    remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                onScroll(available.x, available.y)
+                return Offset.Zero
+            }
+        }
+    }
+)

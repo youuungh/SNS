@@ -7,6 +7,10 @@ import kotlinx.serialization.Serializable
 data class CommentDto(
     val id: Long,
     val comment: String,
+    val parentId: Long?,
+    val parentUserName: String?,
+    val depth: Int,
+    val replyCount: Int,
     val createdAt: String,
     val createUserId: Long,
     val createUserName: String,
@@ -16,8 +20,13 @@ data class CommentDto(
 fun CommentDto.toDomain() : Comment {
     return Comment(
         id = id,
+        userId = createUserId,
         text = comment,
         userName = createUserName,
-        profileImageUrl = profileImageUrl
+        profileImageUrl = profileImageUrl,
+        parentId = parentId,
+        parentUserName = parentUserName,
+        depth = depth,
+        replyCount = replyCount
     )
 }

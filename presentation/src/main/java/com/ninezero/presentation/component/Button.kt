@@ -109,7 +109,7 @@ fun SNSOutlinedButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        shape = MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.small,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
@@ -135,6 +135,40 @@ fun SNSOutlinedButton(
     ) {
         Text(
             text = text,
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
+@Composable
+fun SNSOutlinedToggleButton(
+    isFollowing: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isFollowing) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary,
+            contentColor = if (isFollowing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        border = if (isFollowing) BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.primary
+        ) else null,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .bounceClick(),
+        ) {
+        Text(
+            text = stringResource(id = if (isFollowing) R.string.following else R.string.follow),
             style = MaterialTheme.typography.titleMedium
         )
     }
@@ -562,7 +596,7 @@ fun LikeButton(
 
 @Composable
 fun CommentButton(
-    commentsCount: Int,
+    commentCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -588,7 +622,7 @@ fun CommentButton(
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = commentsCount.toString(),
+            text = commentCount.toString(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Normal,
             color = if (isDarkTheme) snsSmallButtonDarkText else snsSmallButtonLightText
@@ -743,11 +777,11 @@ fun PostButtonsPreview() {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CommentButton(
-                        commentsCount = 10,
+                        commentCount = 10,
                         onClick = {}
                     )
                     CommentButton(
-                        commentsCount = 11,
+                        commentCount = 11,
                         onClick = {}
                     )
                 }
@@ -814,6 +848,14 @@ private fun SNSButtonPreview() {
                     text = "Disabled Button",
                     onClick = {},
                     enabled = false
+                )
+                SNSOutlinedToggleButton(
+                    isFollowing = false,
+                    onClick = {},
+                )
+                SNSOutlinedToggleButton(
+                    isFollowing = true,
+                    onClick = {},
                 )
                 CancelButton(
                     text = "Cancel",

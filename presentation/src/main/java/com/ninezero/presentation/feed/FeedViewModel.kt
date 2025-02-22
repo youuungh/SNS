@@ -13,7 +13,6 @@ import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
 import com.ninezero.presentation.model.PostCardModel
 import com.ninezero.presentation.model.toModel
-import com.ninezero.presentation.profile.ProfileSideEffect
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -107,6 +106,95 @@ class FeedViewModel @Inject constructor(
         load()
     }
 
+    private fun loadComments(postId: Long) {
+        viewModelScope.launch {
+            delay(600)
+            when (val result = feedUseCase.getComments(postId)) {
+                is ApiResult.Success -> {
+                    val currentReplyCount = container.stateFlow.value.replyCount
+                    val comments = result.data.map { pagingData ->
+                        pagingData.map { comment ->
+                            comment.copy(
+                                replyCount = currentReplyCount[comment.id] ?: comment.replyCount
+                            )
+                        }
+                    }.cachedIn(viewModelScope)
+
+                    intent {
+                        reduce {
+                            state.copy(
+                                comments = comments,
+                                isLoadingComments = false
+                            )
+                        }
+                    }
+                }
+                is ApiResult.Error -> {
+                    intent {
+                        reduce { state.copy(isLoadingComments = false) }
+                        postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun loadRepliesForComment(commentId: Long) {
+        val postId = container.stateFlow.value.commentsSheetPost?.postId ?: return
+
+        intent {
+            reduce {
+                state.copy(loadingReplyIds = state.loadingReplyIds + commentId)
+            }
+        }
+
+        viewModelScope.launch {
+            when (val result = feedUseCase.getReplies(postId, commentId)) {
+                is ApiResult.Success -> {
+                    intent {
+                        reduce {
+                            state.copy(
+                                replies = state.replies + (commentId to result.data),
+                                loadingReplyIds = state.loadingReplyIds - commentId,
+                                replyCount = state.replyCount + (commentId to result.data.size)
+                            )
+                        }
+                    }
+                }
+                is ApiResult.Error -> {
+                    intent {
+                        reduce {
+                            state.copy(loadingReplyIds = state.loadingReplyIds - commentId)
+                        }
+                        postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                    }
+                }
+            }
+        }
+    }
+
+    fun setReplyToComment(comment: Comment?) = intent {
+        reduce { state.copy(replyToComment = comment) }
+    }
+
+    fun toggleRepliesVisibility(commentId: Long) = intent {
+        val currentVisibility = state.expandedCommentIds[commentId] == true
+
+        reduce {
+            state.copy(
+                expandedCommentIds = if (currentVisibility) {
+                    state.expandedCommentIds - commentId
+                } else {
+                    state.expandedCommentIds + (commentId to true)
+                }
+            )
+        }
+
+        if (!currentVisibility) {
+            loadRepliesForComment(commentId)
+        }
+    }
+
     fun showOptionsSheet(post: PostCardModel) = intent {
         reduce { state.copy(optionsSheetPost = post) }
     }
@@ -116,11 +204,28 @@ class FeedViewModel @Inject constructor(
     }
 
     fun showCommentsSheet(post: PostCardModel) = intent {
-        reduce { state.copy(commentsSheetPost = post) }
+        reduce {
+            state.copy(
+                commentsSheetPost = post,
+                isLoadingComments = true
+            )
+        }
+        loadComments(post.postId)
     }
 
     fun hideCommentsSheet() = intent {
-        reduce { state.copy(commentsSheetPost = null) }
+        reduce {
+            state.copy(
+                commentsSheetPost = null,
+                comments = emptyFlow(),
+                commentCount = emptyMap(),
+                replyToComment = null,
+                expandedCommentIds = emptyMap(),
+                loadingReplyIds = emptySet(),
+                replies = emptyMap(),
+                replyCount = emptyMap()
+            )
+        }
     }
 
     fun showEditSheet(post: PostCardModel) = intent {
@@ -141,17 +246,6 @@ class FeedViewModel @Inject constructor(
 
     fun hideDialog() = intent {
         reduce { state.copy(dialog = FeedDialog.Hidden) }
-    }
-
-    fun getCombinedComments(post: PostCardModel): List<Comment> {
-        val currentState = container.stateFlow.value
-        val initialComments = post.comments.toMutableList()
-        val addedComments = currentState.addedComments[post.postId].orEmpty()
-        val deletedCommentIds =
-            currentState.deletedComments[post.postId]?.map { it.id }?.toSet() ?: emptySet()
-
-        return (initialComments + addedComments).distinctBy { it.id }
-            .filterNot { deletedCommentIds.contains(it.id) }
     }
 
     fun onPostEdit(postId: Long, content: String, images: List<String>) = intent {
@@ -193,39 +287,123 @@ class FeedViewModel @Inject constructor(
     }
 
     fun onCommentSend(postId: Long, text: String) = intent {
-        when (val result = feedUseCase.addComment(postId, text)) {
+        val parentId = state.replyToComment?.id
+        val currentComment = state.replyToComment
+
+        when (val result = feedUseCase.addComment(postId, text, parentId)) {
             is ApiResult.Success -> {
-                when (val userResult = userUseCase.getMyUser()) {
-                    is ApiResult.Success -> {
-                        val user = userResult.data
-                        updateComments(
-                            postId = postId,
-                            comment = Comment(
-                                id = result.data,
-                                text = text,
-                                userName = user.userName,
-                                profileImageUrl = user.profileImagePath
-                            ),
-                            isDelete = false
+                if (parentId != null && currentComment != null) {
+                    val currentReplyCount = state.replyCount[parentId] ?: currentComment.replyCount
+                    val newReplyCount = currentReplyCount + 1
+
+                    reduce {
+                        state.copy(
+                            replyCount = state.replyCount + (parentId to newReplyCount),
+                            replyToComment = null,
+                            expandedCommentIds = state.expandedCommentIds + (parentId to true)
                         )
                     }
 
-                    is ApiResult.Error -> handleError(userResult)
+                    viewModelScope.launch {
+                        when (val repliesResult = feedUseCase.getReplies(postId, parentId)) {
+                            is ApiResult.Success -> {
+                                intent {
+                                    reduce {
+                                        state.copy(
+                                            replies = state.replies + (parentId to repliesResult.data)
+                                        )
+                                    }
+                                }
+
+                                when (val commentsResult = feedUseCase.getComments(postId)) {
+                                    is ApiResult.Success -> {
+                                        val updatedComments = commentsResult.data.map { pagingData ->
+                                            pagingData.map { comment ->
+                                                if (comment.id == parentId) {
+                                                    comment.copy(replyCount = repliesResult.data.size)
+                                                } else {
+                                                    comment
+                                                }
+                                            }
+                                        }.cachedIn(viewModelScope)
+
+                                        intent {
+                                            reduce {
+                                                state.copy(
+                                                    comments = updatedComments,
+                                                    isLoadingComments = false
+                                                )
+                                            }
+                                        }
+                                    }
+                                    is ApiResult.Error -> handleError(commentsResult)
+                                }
+                            }
+                            is ApiResult.Error -> handleError(repliesResult)
+                        }
+                    }
+                } else {
+                    loadComments(postId)
                 }
             }
-
             is ApiResult.Error -> handleError(result)
         }
     }
 
     fun onDeleteComment(postId: Long, comment: Comment) = intent {
+        val currentCount = state.commentCount[postId] ?: state.commentsSheetPost?.commentCount ?: 0
+        val parentId = comment.parentId
+
         when (val result = feedUseCase.deleteComment(postId, comment.id)) {
             is ApiResult.Success -> {
-                updateComments(postId, comment, isDelete = true)
-                reduce { state.copy(dialog = FeedDialog.Hidden) }
-            }
+                if (parentId != null) {
+                    val parentReplyCount = (state.replyCount[parentId] ?: 1) - 1
 
-            is ApiResult.Error -> handleError(result)
+                    when (val commentsResult = feedUseCase.getComments(postId)) {
+                        is ApiResult.Success -> {
+                            val updatedComments = commentsResult.data.map { pagingData ->
+                                pagingData.map { comment ->
+                                    if (comment.id == parentId) {
+                                        comment.copy(replyCount = parentReplyCount)
+                                    } else {
+                                        comment
+                                    }
+                                }
+                            }.cachedIn(viewModelScope)
+
+                            reduce {
+                                state.copy(
+                                    commentCount = state.commentCount + (postId to currentCount - 1),
+                                    replyCount = state.replyCount + (parentId to parentReplyCount),
+                                    comments = updatedComments,
+                                    expandedCommentIds = state.expandedCommentIds - parentId,
+                                    replies = state.replies - parentId,
+                                    dialog = FeedDialog.Hidden
+                                )
+                            }
+
+                            if (parentReplyCount > 0) {
+                                loadRepliesForComment(parentId)
+                            }
+                        }
+                        is ApiResult.Error -> handleError(commentsResult)
+                    }
+                } else {
+                    reduce {
+                        state.copy(
+                            commentCount = state.commentCount + (postId to currentCount - 1),
+                            expandedCommentIds = state.expandedCommentIds - comment.id,
+                            replies = state.replies - comment.id,
+                            replyCount = state.replyCount - comment.id,
+                            dialog = FeedDialog.Hidden
+                        )
+                    }
+                    loadComments(postId)
+                }
+            }
+            is ApiResult.Error -> {
+                handleError(result)
+            }
         }
     }
 
@@ -320,22 +498,6 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    private fun updateComments(
-        postId: Long,
-        comment: Comment,
-        isDelete: Boolean
-    ) = intent {
-        val commentsMap = if (isDelete) state.deletedComments else state.addedComments
-        val updatedComments = commentsMap[postId].orEmpty() + comment
-        reduce {
-            if (isDelete) {
-                state.copy(deletedComments = commentsMap + (postId to updatedComments))
-            } else {
-                state.copy(addedComments = commentsMap + (postId to updatedComments))
-            }
-        }
-    }
-
     private fun handleError(error: ApiResult.Error) = intent {
         reduce { state.copy(dialog = FeedDialog.Error(error.message)) }
         viewModelScope.launch {
@@ -349,10 +511,20 @@ class FeedViewModel @Inject constructor(
 @Immutable
 data class FeedState(
     val myUserId: Long = -1L,
-    val posts: Flow<PagingData<PostCardModel>> = emptyFlow<PagingData<PostCardModel>>(),
+    val posts: Flow<PagingData<PostCardModel>> = emptyFlow(),
     val deletedPostIds: Set<Long> = emptySet(),
-    val addedComments: Map<Long, List<Comment>> = emptyMap(),
-    val deletedComments: Map<Long, List<Comment>> = emptyMap(),
+
+    // comment
+    val comments: Flow<PagingData<Comment>> = emptyFlow(),
+    val commentCount: Map<Long, Int> = emptyMap(),
+    val isLoadingComments: Boolean = false,
+    val replyToComment: Comment? = null,
+    val expandedCommentIds: Map<Long, Boolean> = emptyMap(),
+    val loadingReplyIds: Set<Long> = emptySet(),
+    val replies: Map<Long, List<Comment>> = emptyMap(),
+    val replyCount: Map<Long, Int> = emptyMap(),
+
+    // like & save
     val likesCount: Map<Long, Int> = emptyMap(),
     val isLiked: Map<Long, Boolean> = emptyMap(),
     val isFollowing: Map<Long, Boolean> = emptyMap(),

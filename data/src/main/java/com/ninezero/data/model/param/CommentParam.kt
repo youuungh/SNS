@@ -8,7 +8,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 @Serializable
 data class CommentParam(
-    val comment: String
+    val comment: String,
+    val parentId: Long? = null
 ) {
     fun toRequestBody(): RequestBody {
         return Json.encodeToString(this).toRequestBody()

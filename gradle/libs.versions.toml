@@ -36,7 +36,7 @@ roomCompiler = "2.7.0-alpha12"
 pagingRuntime = "3.3.5"
 lifecycleService = "2.9.0-alpha08"
 mockitoKotlin = "5.4.0"
-kotlinxCoroutinesTest = "1.10.1"
+kotlinxCoroutinesTest = "1.7.3"
 runner = "1.6.2"
 rules = "1.6.1"
 robolectric = "4.14.1"
@@ -124,6 +124,8 @@ ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
+ktor-client-websockets = { group = "io.ktor", name = "ktor-client-websockets", version.ref = "ktor" }
+ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
 slf4j-android = { group = "org.slf4j", name = "slf4j-android", version.ref = "slf4jAndroid" }
 
 # Test

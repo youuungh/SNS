@@ -15,6 +15,7 @@ interface UserUseCase {
     suspend fun setMyUser(userName: String? = null, profileImagePath: String? = null): ApiResult<Unit>
     suspend fun setProfileImage(uri: String): ApiResult<Unit>
     suspend fun getAllUsers(): ApiResult<Flow<PagingData<User>>>
+    suspend fun getUserInfo(userId: Long): ApiResult<User>
     suspend fun followUser(userId: Long): ApiResult<Long>
     suspend fun unfollowUser(userId: Long): ApiResult<Long>
 

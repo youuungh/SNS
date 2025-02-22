@@ -37,6 +37,8 @@ fun FeedScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: FeedViewModel = hiltViewModel(),
     onNavigateToLogin: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToUser: (Long) -> Unit
 ) {
     val state = viewModel.collectAsState().value
     val posts = state.posts.collectAsLazyPagingItems()
@@ -109,12 +111,13 @@ fun FeedScreen(
                                     if (!state.deletedPostIds.contains(post.postId)) {
                                         PostCard(
                                             postId = post.postId,
+                                            userId = post.userId,
                                             username = post.userName,
                                             profileImageUrl = post.profileImageUrl,
                                             images = post.images,
                                             richTextState = post.richTextState,
-                                            comments = viewModel.getCombinedComments(post),
                                             isOwner = post.userId == state.myUserId,
+                                            commentCount = state.commentCount[post.postId] ?: post.commentCount,
                                             likesCount = state.likesCount[post.postId] ?: post.likesCount,
                                             isLiked = state.isLiked[post.postId] ?: post.isLiked,
                                             isFollowing = state.isFollowing[post.userId] ?: post.isFollowing,
@@ -124,7 +127,9 @@ fun FeedScreen(
                                             onCommentClick = { viewModel.showCommentsSheet(post) },
                                             onLikeClick = { viewModel.handleLikeClick(post.postId, post) },
                                             onFollowClick = { viewModel.handleFollowClick(post.userId, post) },
-                                            onSavedClick = { viewModel.handleSavedClick(post.postId, post) }
+                                            onSavedClick = { viewModel.handleSavedClick(post.postId, post) },
+                                            onNavigateToProfile = onNavigateToProfile,
+                                            onNavigateToUser = { onNavigateToUser(post.userId) }
                                         )
                                     }
                                 }
@@ -219,16 +224,27 @@ fun FeedScreen(
     }
 
     state.commentsSheetPost?.let { post ->
-        val combinedComments = viewModel.getCombinedComments(post)
+        val comments = state.comments.collectAsLazyPagingItems()
+
         CommentsBottomSheet(
             showBottomSheet = true,
-            comments = combinedComments,
+            isLoadingComments = state.isLoadingComments,
+            comments = comments,
             isOwner = post.userId == state.myUserId,
-            onDismiss = { viewModel.hideCommentsSheet() },
-            onDeleteComment = { comment ->
-                viewModel.showDeleteCommentDialog(post.postId, comment)
+            myUserId = state.myUserId,
+            replyToComment = state.replyToComment,
+            expandedCommentIds = state.expandedCommentIds,
+            loadingReplyIds = state.loadingReplyIds,
+            replies = state.replies,
+            onDismiss = {
+                viewModel.hideCommentsSheet()
+                viewModel.setReplyToComment(null)
             },
-            onCommentSend = { text -> viewModel.onCommentSend(post.postId, text) }
+            onCommentSend = { text -> viewModel.onCommentSend(post.postId, text) },
+            onReplyClick = { comment -> viewModel.setReplyToComment(comment) },
+            onCancelReply = { viewModel.setReplyToComment(null) },
+            onToggleReplies = { commentId -> viewModel.toggleRepliesVisibility(commentId) },
+            onDeleteComment = { comment -> viewModel.showDeleteCommentDialog(post.postId, comment) }
         )
     }
 

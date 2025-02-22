@@ -88,6 +88,8 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.json)
     implementation(libs.ktor.client.logging)
+    implementation(libs.ktor.client.websockets)
+    implementation(libs.ktor.client.cio)
     implementation(libs.slf4j.android)
 
     implementation(libs.androidx.core.ktx)

@@ -35,7 +35,7 @@ class PostRemoteMediator @Inject constructor(
 
             if (loadType == LoadType.APPEND) {
                 Timber.d("APPEND delay")
-                delay(2000)
+                delay(1000)
             }
 
             val page = when (loadType) {

@@ -1,6 +1,5 @@
 package com.ninezero.presentation.post
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.ninezero.presentation.component.DetailScaffold
@@ -49,11 +47,11 @@ import com.ninezero.presentation.component.SNSSmallText
 import com.ninezero.presentation.component.SNSSurface
 import com.ninezero.presentation.component.SNSTextButton
 import com.ninezero.presentation.component.bounceClick
-
-private const val APP_BAR_HEIGHT = 56
-private const val STICKY_HEADER_HEIGHT = 24
-private const val CELL_SIZE = 110
-private const val GRID_SPACING = 2
+import com.ninezero.presentation.util.Constants.APP_BAR_HEIGHT
+import com.ninezero.presentation.util.Constants.CELL_SIZE
+import com.ninezero.presentation.util.Constants.GRID_SPACING
+import com.ninezero.presentation.util.Constants.STICKY_SMALL_HEADER_HEIGHT
+import com.ninezero.presentation.util.calculateGridHeight
 
 @Composable
 fun PostImageScreen(
@@ -64,7 +62,7 @@ fun PostImageScreen(
     val state = viewModel.collectAsState().value
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val minGridHeight = screenHeight - ((APP_BAR_HEIGHT + STICKY_HEADER_HEIGHT).dp)
+    val minGridHeight = screenHeight - ((APP_BAR_HEIGHT + STICKY_SMALL_HEADER_HEIGHT).dp)
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
 
@@ -112,33 +110,34 @@ fun PostImageScreen(
                     }
 
                     stickyHeader {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        SNSSurface(elevation = 2.dp) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                SNSSmallText(text = if (isMultiSelectMode) {
-                                    stringResource(R.string.multi_select)
-                                } else {
-                                    stringResource(R.string.single_select)
-                                })
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    SNSSmallText(text = if (isMultiSelectMode) {
+                                        stringResource(R.string.multi_select)
+                                    } else {
+                                        stringResource(R.string.single_select)
+                                    })
 
-                                SNSIconToggleButton(
-                                    onClick = {
-                                        isMultiSelectMode = !isMultiSelectMode
-                                        if (!isMultiSelectMode) {
-                                            viewModel.onMultiSelectDisabled()
-                                        }
-                                    },
-                                    icon = painterResource(id = R.drawable.ic_multiple),
-                                    isActive = isMultiSelectMode
-                                )
+                                    SNSIconToggleButton(
+                                        onClick = {
+                                            isMultiSelectMode = !isMultiSelectMode
+                                            if (!isMultiSelectMode) {
+                                                viewModel.onMultiSelectDisabled()
+                                            }
+                                        },
+                                        icon = painterResource(id = R.drawable.ic_multiple),
+                                        isActive = isMultiSelectMode
+                                    )
+                                }
                             }
                         }
                     }
@@ -149,12 +148,11 @@ fun PostImageScreen(
                         LazyVerticalGrid(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = gridHeight, max = gridHeight + minGridHeight)
+                                .heightIn(min = minGridHeight, max = gridHeight + minGridHeight)
                                 .navigationBarsPadding(),
                             columns = GridCells.Adaptive(CELL_SIZE.dp),
                             horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
-                            verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
-                            userScrollEnabled = false
+                            verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp)
                         ) {
                             items(
                                 count = state.images.size,
@@ -223,14 +221,4 @@ fun PostImageScreen(
             }
         }
     }
-}
-
-@Composable
-private fun calculateGridHeight(
-    itemCount: Int,
-    screenWidth: Dp,
-): Dp {
-    val columnsCount = (screenWidth / (CELL_SIZE + GRID_SPACING).dp).toInt().coerceAtLeast(1)
-    val rowCount = (itemCount + columnsCount - 1) / columnsCount
-    return (CELL_SIZE * rowCount + GRID_SPACING * (rowCount - 1)).dp
 }
