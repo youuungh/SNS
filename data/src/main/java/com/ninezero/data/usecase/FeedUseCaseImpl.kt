@@ -100,12 +100,6 @@ class FeedUseCaseImpl @Inject constructor(
     private val postRepository: PostRepository,
     private val networkRepository: NetworkRepository
 ) : FeedUseCase {
-
-    companion object {
-        const val COMMENT_PAGE_SIZE = 20
-        const val REPLY_PAGE_SIZE = 10
-    }
-
     override suspend fun getPosts(): ApiResult<Flow<PagingData<Post>>> = try {
         ApiResult.Success(postRepository.getPosts())
     } catch (e: Exception) {
@@ -123,9 +117,9 @@ class FeedUseCaseImpl @Inject constructor(
     override suspend fun getSavedPosts(): ApiResult<Flow<PagingData<Post>>> = try {
         ApiResult.Success(
             Pager(
-                PagingConfig(
+                config = PagingConfig(
                     pageSize = PAGE_SIZE,
-                    initialLoadSize = PAGE_SIZE * 2,
+                    initialLoadSize = PAGE_SIZE,
                     prefetchDistance = 2
                 )
             ) {
@@ -142,7 +136,7 @@ class FeedUseCaseImpl @Inject constructor(
             Pager(
                 PagingConfig(
                     pageSize = PAGE_SIZE,
-                    initialLoadSize = PAGE_SIZE * 2,
+                    initialLoadSize = PAGE_SIZE,
                     prefetchDistance = 2
                 )
             ) {
@@ -200,11 +194,10 @@ class FeedUseCaseImpl @Inject constructor(
     override suspend fun getComments(postId: Long): ApiResult<Flow<PagingData<Comment>>> = try {
         ApiResult.Success(
             Pager(
-                PagingConfig(
+                config = PagingConfig(
                     pageSize = COMMENT_PAGE_SIZE,
                     initialLoadSize = COMMENT_PAGE_SIZE,
-                    prefetchDistance = 2,
-                    enablePlaceholders = false
+                    prefetchDistance = 1
                 )
             ) {
                 CommentPagingSource(postService, postId)
@@ -328,5 +321,9 @@ class FeedUseCaseImpl @Inject constructor(
         } else {
             null
         }
+    }
+
+    companion object {
+        const val COMMENT_PAGE_SIZE = 20
     }
 }

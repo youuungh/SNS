@@ -22,6 +22,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,13 +40,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.BasicRichText
+import com.ninezero.domain.model.RecentSearch
+import com.ninezero.domain.model.User
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.util.formatRelativeTime
@@ -333,6 +343,96 @@ fun UserCard(
     }
 }
 
+@Composable
+fun UserSearchResultCard(
+    user: User,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .bounceClick()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SNSProfileImage(
+                imageUrl = user.profileImagePath,
+                modifier = Modifier.size(40.dp)
+            )
+
+            Column {
+                Text(
+                    text = user.userName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = user.loginId,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentSearchCard(
+    search: RecentSearch,
+    onDelete: () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(100.dp)
+            .aspectRatio(1f)
+            .bounceClick()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        SNSIconButton(
+            onClick = onDelete,
+            imageVector = Icons.Rounded.Close,
+            contentDescription = "delete",
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(20.dp)
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SNSProfileImage(
+                imageUrl = search.searchedUserProfileImagePath,
+                modifier = Modifier.size(48.dp)
+            )
+            Text(
+                text = search.searchedUserName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -389,6 +489,47 @@ private fun UserCardPreview() {
             isFollowing = false,
             onFollowClick = {},
             onUserClick = {}
+        )
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun UserSearchResultCardPreview() {
+    SNSTheme {
+        UserSearchResultCard(
+            user = User(
+                id = 1L,
+                loginId = "username",
+                userName = "Username",
+                profileImagePath = null,
+                postCount = 0,
+                followerCount = 0,
+                followingCount = 0,
+                isFollowing = false
+            ),
+            onClick = {}
+        )
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RecentSearchCardPreview() {
+    SNSTheme {
+        RecentSearchCard(
+            search = RecentSearch(
+                id = 1L,
+                userId = 1L,
+                searchedUserId = 2L,
+                searchedUserName = "Username",
+                searchedUserProfileImagePath = null,
+                searchedAt = ""
+            ),
+            onDelete = {},
+            onClick = {}
         )
     }
 }

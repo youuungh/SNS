@@ -21,7 +21,6 @@ class CommentPagingSource @Inject constructor(
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Comment> {
         return try {
             val page = params.key ?: 1
-
             val response = postService.getComments(
                 postId = postId,
                 page = page,

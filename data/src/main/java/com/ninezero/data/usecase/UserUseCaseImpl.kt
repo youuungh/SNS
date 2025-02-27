@@ -1,7 +1,11 @@
 package com.ninezero.data.usecase
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.google.firebase.messaging.FirebaseMessaging
 import com.ninezero.data.UserDataStore
+import com.ninezero.data.db.user.paging.SearchPagingSource
 import com.ninezero.data.model.param.LoginParam
 import com.ninezero.data.model.param.SignUpParam
 import com.ninezero.data.model.param.UpdateMyInfoParam
@@ -9,12 +13,15 @@ import com.ninezero.data.model.dto.toDomain
 import com.ninezero.data.ktor.UserService
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
+import com.ninezero.domain.model.RecentSearch
 import com.ninezero.domain.model.User
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.repository.UserRepository
+import com.ninezero.domain.usecase.FCMTokenUseCase
 import com.ninezero.domain.usecase.FileUseCase
 import com.ninezero.domain.usecase.UserUseCase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -179,12 +186,10 @@ class UserUseCaseImpl @Inject constructor(
     private val userRepository: UserRepository,
     private val fileUseCase: FileUseCase,
     private val userDataStore: UserDataStore,
+    private val fcmTokenUseCase: FCMTokenUseCase,
     private val networkRepository: NetworkRepository
 ) : UserUseCase {
-    override suspend fun login(
-        id: String,
-        password: String
-    ): ApiResult<String> = try {
+    override suspend fun login(id: String, password: String): ApiResult<String> = try {
         val loginParam = LoginParam(loginId = id, password = password)
         val response = userService.login(loginParam)
 
@@ -192,6 +197,14 @@ class UserUseCaseImpl @Inject constructor(
             val token = response.data
             if (token != null) {
                 setToken(token)
+
+                try {
+                    val fcmToken = FirebaseMessaging.getInstance().token.await()
+                    fcmTokenUseCase.registerToken(fcmToken)
+                } catch (e: Exception) {
+                    Timber.e(e, "FCM 토큰 등록 실패")
+                }
+
                 ApiResult.Success(token)
             } else {
                 ApiResult.Error.InvalidRequest("토큰이 없습니다")
@@ -203,11 +216,7 @@ class UserUseCaseImpl @Inject constructor(
         e.handleNetworkException()
     }
 
-    override suspend fun signUp(
-        id: String,
-        userName: String,
-        password: String
-    ): ApiResult<Boolean> = try {
+    override suspend fun signUp(id: String, userName: String, password: String): ApiResult<Boolean> = try {
         val signUpParam = SignUpParam(
             loginId = id,
             userName = userName,
@@ -235,6 +244,15 @@ class UserUseCaseImpl @Inject constructor(
     }
 
     override suspend fun clearToken(): ApiResult<Unit> = try {
+        try {
+            val token = fcmTokenUseCase.getCurrentToken()
+            token?.let {
+                fcmTokenUseCase.unregisterToken(token)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "FCM 토큰 등록 해제 실패")
+        }
+
         userDataStore.clear()
         ApiResult.Success(Unit)
     } catch (e: Exception) {
@@ -377,6 +395,75 @@ class UserUseCaseImpl @Inject constructor(
         }
     }
 
+    override fun searchUsers(query: String): ApiResult<Flow<PagingData<User>>> = try {
+        ApiResult.Success(
+            Pager(
+                config = PagingConfig(
+                    pageSize = PAGE_SIZE,
+                    initialLoadSize = PAGE_SIZE,
+                    prefetchDistance = 1
+                )
+            ) {
+                SearchPagingSource(userService, query)
+            }.flow
+        )
+    } catch (e: Exception) {
+        Timber.e("Network Error: ${e.message}")
+        ApiResult.Error.NetworkError("검색에 실패했습니다")
+    }
+
+    override suspend fun getRecentSearches(): ApiResult<List<RecentSearch>> {
+        return try {
+            val response = userService.getRecentSearches()
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(response.data?.map { it.toDomain() } ?: emptyList())
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "최근 검색 목록을 불러오는데 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun saveRecentSearch(userId: Long): ApiResult<Unit> {
+        return try {
+            val response = userService.saveRecentSearch(userId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(Unit)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "최근 검색 저장에 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun deleteRecentSearch(userId: Long): ApiResult<Unit> {
+        return try {
+            val response = userService.deleteRecentSearch(userId)
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(Unit)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "최근 검색 삭제에 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
+    override suspend fun clearRecentSearches(): ApiResult<Unit> {
+        return try {
+            val response = userService.clearRecentSearches()
+            if (response.result == "SUCCESS") {
+                ApiResult.Success(Unit)
+            } else {
+                ApiResult.Error.ServerError(response.errorMessage ?: "최근 검색 전체 삭제에 실패했습니다")
+            }
+        } catch (e: Exception) {
+            e.handleNetworkException()
+        }
+    }
+
     override suspend fun updateOnboardingStatus(isCompleted: Boolean) {
         userDataStore.updateOnboardingStatus(isCompleted)
     }
@@ -389,5 +476,9 @@ class UserUseCaseImpl @Inject constructor(
         } else {
             null
         }
+    }
+
+    companion object {
+        const val PAGE_SIZE = 20
     }
 }

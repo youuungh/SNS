@@ -3,7 +3,9 @@ package com.ninezero.presentation.component
 import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -11,22 +13,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.tooling.preview.Preview
@@ -115,6 +122,131 @@ fun SNSTextField(
                     .padding(horizontal = 8.dp)
                     .padding(top = 8.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun SearchTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onFocus: () -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    focusRequester: FocusRequester
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val backgroundColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+
+    var textFieldValue by remember(value) {
+        mutableStateOf(
+            TextFieldValue(
+                text = value,
+                selection = TextRange(value.length)
+            )
+        )
+    }
+
+    LaunchedEffect(value) {
+        if (value != textFieldValue.text) {
+            textFieldValue = TextFieldValue(
+                text = value,
+                selection = TextRange(value.length)
+            )
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    width = 1.dp,
+                    color = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(1.dp)
+                .background(
+                    color = if (isFocused) Color.Transparent else backgroundColor,
+                    shape = RoundedCornerShape(11.dp)
+                )
+                .clip(RoundedCornerShape(11.dp))
+                .clickable(onClick = onFocus)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_search),
+                    contentDescription = "Search",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+
+                Box(modifier = Modifier.weight(1f)) {
+                    BasicTextField(
+                        value = textFieldValue,
+                        onValueChange = { newValue ->
+                            textFieldValue = newValue
+                            onValueChange(newValue.text)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { focusState ->
+                                isFocused = focusState.isFocused
+                                if (focusState.isFocused) {
+                                    onFocus()
+                                    textFieldValue = TextFieldValue(
+                                        text = textFieldValue.text,
+                                        selection = TextRange(textFieldValue.text.length)
+                                    )
+                                }
+                            },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box {
+                                if (value.isEmpty()) {
+                                    Text(
+                                        text = placeholder,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = value.isNotEmpty(),
+                    enter = fadeIn(animationSpec = tween(150)),
+                    exit = fadeOut(animationSpec = tween(150))
+                ) {
+                    IconButton(
+                        onClick = { onValueChange("") },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -448,6 +580,40 @@ private fun SNSMediumTextPreview() {
     SNSTheme {
         Surface {
             SNSMediumText(text = "Text")
+        }
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SearchTextFieldPreview() {
+    SNSTheme {
+        Surface {
+            var text by remember { mutableStateOf("") }
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            ) {
+                SearchTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    onFocus = {},
+                    focusRequester = remember { FocusRequester() },
+                    placeholder = "검색"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SearchTextField(
+                    value = "검색어",
+                    onValueChange = {},
+                    onFocus = {},
+                    focusRequester = remember { FocusRequester() },
+                    placeholder = "검색"
+                )
+            }
         }
     }
 }

@@ -222,6 +222,9 @@ class ChatViewModel @Inject constructor(
                     }
                     is ApiResult.Error -> postSideEffect(ChatSideEffect.ShowSnackbar(result.message))
                 }
+            } else {
+                delay(100)
+                loadInitialMessages(currentRoomId!!)
             }
         } catch (e: Exception) {
             postSideEffect(ChatSideEffect.ShowSnackbar(e.message ?: "메시지 전송 실패"))

@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,7 +24,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,8 +45,12 @@ import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSIconButton
 import com.ninezero.presentation.message.MessageScreen
+import com.ninezero.presentation.search.ExploreScreen
+import com.ninezero.presentation.search.SearchViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
 fun MainScreen(
@@ -74,12 +82,25 @@ fun MainContent(
         navBackStackEntry?.destination?.route ?: MainRoute.BottomNavItem.Feed.route
     }
 
+    val searchViewModel: SearchViewModel = hiltViewModel()
+    val isSearchMode by searchViewModel.isSearchMode.collectAsState()
+    val searchState by searchViewModel.collectAsState()
+
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
 
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    val currentScreenFocusRequester = if (currentRoute == MainRoute.BottomNavItem.Search.route) {
+        focusRequester
+    } else {
+        remember { FocusRequester() }
+    }
 
     val permissionHandler = remember(activity, context, scope, snackbarHostState, onNavigateToPost) {
         PermissionHandler(
@@ -100,9 +121,22 @@ fun MainContent(
         permissionHandler.setPermissionLauncher(permissionLauncher)
     }
 
+    LaunchedEffect(isSearchMode, currentRoute) {
+        if (isSearchMode && currentRoute == MainRoute.BottomNavItem.Search.route) {
+            delay(100)
+            currentScreenFocusRequester.requestFocus()
+        }
+    }
+
+    BackHandler(enabled = isSearchMode) {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        searchViewModel.clearSearch()
+        searchViewModel.setSearchMode(false)
+    }
+
     val title = when (currentRoute) {
         MainRoute.BottomNavItem.Feed.route -> stringResource(R.string.feed)
-        MainRoute.BottomNavItem.Search.route -> stringResource(R.string.search)
         MainRoute.BottomNavItem.Message.route -> stringResource(R.string.message)
         MainRoute.BottomNavItem.Profile.route -> stringResource(R.string.profile)
         else -> ""
@@ -122,7 +156,19 @@ fun MainContent(
     }
 
     MainScaffold(
-        title = title,
+        title = if (currentRoute != MainRoute.BottomNavItem.Search.route) title else null,
+        isSearchRoute = currentRoute == MainRoute.BottomNavItem.Search.route,
+        isSearchMode = isSearchMode,
+        searchQuery = searchState.searchQuery,
+        onSearchQueryChange = searchViewModel::onSearchQueryChange,
+        onSearchFocus = { searchViewModel.setSearchMode(true) },
+        onBackClick = {
+            keyboardController?.hide()
+            focusManager.clearFocus()
+            searchViewModel.clearSearch()
+            searchViewModel.setSearchMode(false)
+        },
+        focusRequester = currentScreenFocusRequester,
         snackbarHostState = snackbarHostState,
         actions = {
             if (currentRoute == MainRoute.BottomNavItem.Profile.route) {
@@ -146,7 +192,9 @@ fun MainContent(
         NavHost(
             navController = navController,
             startDestination = MainRoute.BottomNavItem.Feed.route,
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(it),
             enterTransition = { EnterTransition.None },
             exitTransition = { ExitTransition.None }
         ) {
@@ -160,7 +208,11 @@ fun MainContent(
             }
 
             composable(MainRoute.BottomNavItem.Search.route) {
-                // SearchScreen
+                ExploreScreen(
+                    snackbarHostState = snackbarHostState,
+                    searchViewModel = searchViewModel,
+                    onNavigateToUser = onNavigateToUser
+                )
             }
 
             composable(MainRoute.BottomNavItem.Message.route) {

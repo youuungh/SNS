@@ -1,12 +1,14 @@
 package com.ninezero.data.di
 
 import com.ninezero.data.usecase.ChatUseCaseImpl
+import com.ninezero.data.usecase.FCMTokenUseCaseImpl
 import com.ninezero.data.usecase.FeedUseCaseImpl
 import com.ninezero.data.usecase.FileUseCaseImpl
 import com.ninezero.data.usecase.PostUseCaseImpl
 import com.ninezero.data.usecase.ThemeUseCaseImpl
 import com.ninezero.data.usecase.UserUseCaseImpl
 import com.ninezero.domain.usecase.ChatUseCase
+import com.ninezero.domain.usecase.FCMTokenUseCase
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.FileUseCase
 import com.ninezero.domain.usecase.PostUseCase
@@ -34,6 +36,9 @@ abstract class UserModule {
 
     @Binds
     abstract fun bindChatUseCase(chatUseCaseImpl: ChatUseCaseImpl): ChatUseCase
+
+    @Binds
+    abstract fun bindFCMTokenUseCase(fcmTokenUseCaseImpl: FCMTokenUseCaseImpl): FCMTokenUseCase
 
     @Binds
     abstract fun bindThemeUseCase(themeUseCaseImpl: ThemeUseCaseImpl): ThemeUseCase

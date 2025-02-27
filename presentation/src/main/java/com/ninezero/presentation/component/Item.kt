@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.ninezero.domain.model.Comment
 import com.ninezero.domain.model.chat.ChatMessage
 import com.ninezero.domain.model.chat.ChatRoom
+import com.ninezero.domain.model.chat.ChatRoomParticipant
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.LocalTheme
 import com.ninezero.presentation.theme.SNSTheme
@@ -251,6 +252,39 @@ fun ItemSection(
             SNSTextButton(
                 text = stringResource(id = R.string.show_all),
                 onClick = onShowAllClick,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
+
+        content()
+    }
+}
+
+@Composable
+fun ClearSection(
+    title: String,
+    onClearAllClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 16.dp)
+            )
+
+            SNSTextButton(
+                text = stringResource(id = R.string.clear_all),
+                onClick = onClearAllClick,
                 modifier = Modifier.padding(end = 8.dp)
             )
         }
@@ -516,49 +550,51 @@ fun ChatRoomItem(
 @Composable
 private fun CommentItemPreview() {
     SNSTheme {
-        CommentItem(
-            comment = Comment(
-                id = 1L,
-                userId = 1L,
-                text = "This is a sample comment, This is a sample comment, This is a sample comment",
-                userName = "User",
-                profileImageUrl = null,
-                parentId = null,
-                parentUserName = null,
-                depth = 0,
-                replyCount = 2,
-                isExpanded = true,
-                replies = listOf(
-                    Comment(
-                        id = 2L,
-                        userId = 1L,
-                        text = "First reply comment",
-                        userName = "ReplyUser1",
-                        profileImageUrl = null,
-                        parentId = 1L,
-                        parentUserName = "User",
-                        depth = 1,
-                        replyCount = 0
-                    ),
-                    Comment(
-                        id = 3L,
-                        userId = 1L,
-                        text = "Second reply comment",
-                        userName = "ReplyUser2",
-                        profileImageUrl = null,
-                        parentId = 1L,
-                        parentUserName = "User",
-                        depth = 1,
-                        replyCount = 0
+        SNSSurface {
+            CommentItem(
+                comment = Comment(
+                    id = 1L,
+                    userId = 1L,
+                    text = "This is a sample comment, This is a sample comment, This is a sample comment",
+                    userName = "User",
+                    profileImageUrl = null,
+                    parentId = null,
+                    parentUserName = null,
+                    depth = 0,
+                    replyCount = 2,
+                    isExpanded = true,
+                    replies = listOf(
+                        Comment(
+                            id = 2L,
+                            userId = 1L,
+                            text = "First reply comment",
+                            userName = "ReplyUser1",
+                            profileImageUrl = null,
+                            parentId = 1L,
+                            parentUserName = "User",
+                            depth = 1,
+                            replyCount = 0
+                        ),
+                        Comment(
+                            id = 3L,
+                            userId = 1L,
+                            text = "Second reply comment",
+                            userName = "ReplyUser2",
+                            profileImageUrl = null,
+                            parentId = 1L,
+                            parentUserName = "User",
+                            depth = 1,
+                            replyCount = 0
+                        )
                     )
-                )
-            ),
-            isOwner = true,
-            myUserId = 1L,
-            onReplyClick = {},
-            onToggleReplies = {},
-            onDeleteComment = {}
-        )
+                ),
+                isOwner = true,
+                myUserId = 1L,
+                onReplyClick = {},
+                onToggleReplies = {},
+                onDeleteComment = {}
+            )
+        }
     }
 }
 
@@ -567,10 +603,12 @@ private fun CommentItemPreview() {
 @Composable
 private fun StatisticItemPreview() {
     SNSTheme {
-        StatisticItem(
-            count = 100,
-            label = "게시물"
-        )
+        SNSSurface {
+            StatisticItem(
+                count = 100,
+                label = "게시물"
+            )
+        }
     }
 }
 
@@ -592,34 +630,103 @@ private fun ItemSectionPreview() {
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
+private fun ClearSectionPreview() {
+    SNSTheme {
+        Surface {
+            ClearSection(
+                title = "Section Name",
+                onClearAllClick = {},
+                content = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun ChatRoomItemPreview() {
+    SNSTheme {
+        Surface {
+            val room = ChatRoom(
+                id = "room1",
+                name = "채팅방",
+                participants = listOf(
+                    ChatRoomParticipant(
+                        userId = 1L,
+                        userLoginId = "user1",
+                        userName = "User1",
+                        profileImagePath = null,
+                        unreadCount = 3,
+                        lastReadMessageId = "msg0",
+                        leaveTimestamp = null
+                    ),
+                    ChatRoomParticipant(
+                        userId = 2L,
+                        userLoginId = "user2",
+                        userName = "User2",
+                        profileImagePath = null,
+                        unreadCount = 0,
+                        lastReadMessageId = "msg1",
+                        leaveTimestamp = null
+                    )
+                ),
+                lastMessage = ChatMessage(
+                    id = "msg1",
+                    content = "안녕하세요! 메시지 미리보기입니다.",
+                    senderId = 2L,
+                    senderName = "User2",
+                    roomId = "room1",
+                    createdAt = "2024-02-24T14:30:00",
+                    leaveTimestamp = null
+                ),
+                messageCount = 10,
+                createdAt = "2024-02-24T10:00:00"
+            )
+
+            ChatRoomItem(
+                room = room,
+                myUserId = 1L,
+                onItemClick = {},
+                onLeaveClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
 fun ChatMessageItemPreview() {
     SNSTheme {
-        Column {
-            val message = ChatMessage(
-                id = "1",
-                content = "안녕하세요?",
-                senderId = 1,
-                senderName = "Username",
-                roomId = "room1",
-                createdAt = "2099-09-99T99:90:00",
-                leaveTimestamp = null
-            )
-            ChatDateHeader(
-                date = "2099-09-99T99:90:00",
-                modifier = Modifier.fillMaxWidth()
-            )
-            ChatMessageItem(
-                message = message,
-                isOwner = false,
-                profileImageUrl = null,
-                modifier = Modifier.fillMaxWidth()
-            )
-            ChatMessageItem(
-                message = message.copy(content = "네, 안녕하세요!"),
-                isOwner = true,
-                profileImageUrl = null,
-                modifier = Modifier.fillMaxWidth()
-            )
+        SNSSurface {
+            Column {
+                val message = ChatMessage(
+                    id = "1",
+                    content = "안녕하세요?",
+                    senderId = 1,
+                    senderName = "Username",
+                    roomId = "room1",
+                    createdAt = "2099-09-99T99:90:00",
+                    leaveTimestamp = null
+                )
+                ChatDateHeader(
+                    date = "2099-09-99T99:90:00",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ChatMessageItem(
+                    message = message,
+                    isOwner = false,
+                    profileImageUrl = null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ChatMessageItem(
+                    message = message.copy(content = "네, 안녕하세요!"),
+                    isOwner = true,
+                    profileImageUrl = null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

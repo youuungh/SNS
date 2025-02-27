@@ -1,6 +1,7 @@
 package com.ninezero.data.ktor
 
 import com.ninezero.data.model.CommonResponse
+import com.ninezero.data.model.dto.RecentSearchDto
 import com.ninezero.data.model.param.LoginParam
 import com.ninezero.data.model.param.SignUpParam
 import com.ninezero.data.model.param.UpdateMyInfoParam
@@ -69,5 +70,29 @@ class UserService @Inject constructor(
 
     suspend fun unfollowUser(userId: Long): CommonResponse<Long> {
         return client.delete("users/$userId/follow").body()
+    }
+
+    suspend fun searchUsers(query: String, page: Int, size: Int): CommonResponse<List<UserDto>> {
+        return client.get("users/search") {
+            parameter("query", query)
+            parameter("page", page)
+            parameter("size", size)
+        }.body()
+    }
+
+    suspend fun getRecentSearches(): CommonResponse<List<RecentSearchDto>> {
+        return client.get("users/recent-searches").body()
+    }
+
+    suspend fun saveRecentSearch(userId: Long): CommonResponse<Unit> {
+        return client.post("users/recent-searches/$userId").body()
+    }
+
+    suspend fun deleteRecentSearch(userId: Long): CommonResponse<Unit> {
+        return client.delete("users/recent-searches/$userId").body()
+    }
+
+    suspend fun clearRecentSearches(): CommonResponse<Unit> {
+        return client.delete("users/recent-searches").body()
     }
 }

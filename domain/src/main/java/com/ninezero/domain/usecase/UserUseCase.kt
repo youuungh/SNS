@@ -2,6 +2,7 @@ package com.ninezero.domain.usecase
 
 import androidx.paging.PagingData
 import com.ninezero.domain.model.ApiResult
+import com.ninezero.domain.model.RecentSearch
 import com.ninezero.domain.model.User
 import kotlinx.coroutines.flow.Flow
 
@@ -18,6 +19,13 @@ interface UserUseCase {
     suspend fun getUserInfo(userId: Long): ApiResult<User>
     suspend fun followUser(userId: Long): ApiResult<Long>
     suspend fun unfollowUser(userId: Long): ApiResult<Long>
+
+    // search
+    fun searchUsers(query: String): ApiResult<Flow<PagingData<User>>>
+    suspend fun getRecentSearches(): ApiResult<List<RecentSearch>>
+    suspend fun saveRecentSearch(userId: Long): ApiResult<Unit>
+    suspend fun deleteRecentSearch(userId: Long): ApiResult<Unit>
+    suspend fun clearRecentSearches(): ApiResult<Unit>
 
     suspend fun updateOnboardingStatus(isCompleted: Boolean)
     suspend fun hasCompletedOnboarding(): Boolean
