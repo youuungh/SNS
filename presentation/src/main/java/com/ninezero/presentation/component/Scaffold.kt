@@ -3,17 +3,11 @@ package com.ninezero.presentation.component
 import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ninezero.presentation.theme.SNSTheme
 
 @Composable
@@ -96,6 +90,7 @@ fun DetailScaffold(
                         Text(
                             text = displayTitle,
                             style = MaterialTheme.typography.titleMedium,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
                     },
@@ -204,6 +199,7 @@ fun LeftAlignedDetailScaffold(
                                 Text(
                                     text = displayTitle,
                                     style = MaterialTheme.typography.titleMedium,
+                                    fontSize = if (subtitle != null) 16.sp else 18.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 subtitle?.let {
@@ -294,6 +290,16 @@ fun MainScaffold(
         else -> null
     }
 
+    var hasBottomBar by remember { mutableStateOf(false) }
+
+    val wrappedBottomBar: @Composable () -> Unit = {
+        Box(
+            modifier = Modifier.onGloballyPositioned { hasBottomBar = true }
+        ) {
+            bottomBar()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -356,7 +362,7 @@ fun MainScaffold(
                 )
             }
         },
-        bottomBar = bottomBar,
+        bottomBar = wrappedBottomBar,
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0)
     ) { paddingValues ->
@@ -370,7 +376,15 @@ fun MainScaffold(
             snackbarHostState?.let {
                 SNSSnackbar(
                     snackbarHostState = it,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .then(
+                            if (hasBottomBar) {
+                                Modifier.padding(bottom = 64.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
             }
         }
@@ -403,7 +417,7 @@ private fun LeftAlignedDetailScaffoldPreview() {
     SNSTheme {
         LeftAlignedDetailScaffold(
             title = "Detail Title",
-            subtitle = "Detail Subtitle",
+            subtitle = "Detail Title",
             profileImageUrl = null,
             showBackButton = true,
             onBackClick = {},

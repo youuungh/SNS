@@ -3,11 +3,8 @@ package com.ninezero.data.usecase
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import com.google.firebase.messaging.FirebaseMessaging
 import com.ninezero.data.UserDataStore
 import com.ninezero.data.db.user.paging.SearchPagingSource
-import com.ninezero.data.model.param.LoginParam
-import com.ninezero.data.model.param.SignUpParam
 import com.ninezero.data.model.param.UpdateMyInfoParam
 import com.ninezero.data.model.dto.toDomain
 import com.ninezero.data.ktor.UserService
@@ -17,13 +14,13 @@ import com.ninezero.domain.model.RecentSearch
 import com.ninezero.domain.model.User
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.repository.UserRepository
-import com.ninezero.domain.usecase.FCMTokenUseCase
+import com.ninezero.domain.usecase.AuthUseCase
 import com.ninezero.domain.usecase.FileUseCase
 import com.ninezero.domain.usecase.UserUseCase
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Provider
 
 /** retrofit
 class UserUseCaseImpl @Inject constructor(
@@ -184,79 +181,18 @@ class UserUseCaseImpl @Inject constructor(
 class UserUseCaseImpl @Inject constructor(
     private val userService: UserService,
     private val userRepository: UserRepository,
+    private val authUseCaseProvider: Provider<AuthUseCase>,
     private val fileUseCase: FileUseCase,
     private val userDataStore: UserDataStore,
-    private val fcmTokenUseCase: FCMTokenUseCase,
     private val networkRepository: NetworkRepository
 ) : UserUseCase {
-    override suspend fun login(id: String, password: String): ApiResult<String> = try {
-        val loginParam = LoginParam(loginId = id, password = password)
-        val response = userService.login(loginParam)
 
-        if (response.result == "SUCCESS") {
-            val token = response.data
-            if (token != null) {
-                setToken(token)
-
-                try {
-                    val fcmToken = FirebaseMessaging.getInstance().token.await()
-                    fcmTokenUseCase.registerToken(fcmToken)
-                } catch (e: Exception) {
-                    Timber.e(e, "FCM 토큰 등록 실패")
-                }
-
-                ApiResult.Success(token)
-            } else {
-                ApiResult.Error.InvalidRequest("토큰이 없습니다")
-            }
-        } else {
-            ApiResult.Error.InvalidRequest(response.errorMessage ?: "로그인에 실패했습니다")
-        }
-    } catch (e: Exception) {
-        e.handleNetworkException()
+    override suspend fun getMyUserId(): Long {
+        return userDataStore.getUserId()
     }
 
-    override suspend fun signUp(id: String, userName: String, password: String): ApiResult<Boolean> = try {
-        val signUpParam = SignUpParam(
-            loginId = id,
-            userName = userName,
-            password = password,
-            extraUserInfo = "",
-            profileImagePath = ""
-        )
-        val response = userService.signUp(signUpParam)
-
-        if (response.result == "SUCCESS") {
-            ApiResult.Success(true)
-        } else {
-            ApiResult.Error.InvalidRequest(response.errorMessage ?: "회원가입에 실패했습니다")
-        }
-    } catch (e: Exception) {
-        e.handleNetworkException()
-    }
-
-    override suspend fun getToken(): String? {
-        return userDataStore.getToken()
-    }
-
-    override suspend fun setToken(token: String) {
-        userDataStore.setToken(token = token)
-    }
-
-    override suspend fun clearToken(): ApiResult<Unit> = try {
-        try {
-            val token = fcmTokenUseCase.getCurrentToken()
-            token?.let {
-                fcmTokenUseCase.unregisterToken(token)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "FCM 토큰 등록 해제 실패")
-        }
-
-        userDataStore.clear()
-        ApiResult.Success(Unit)
-    } catch (e: Exception) {
-        ApiResult.Error.ServerError(message = "토큰 삭제 중 오류가 발생했습니다")
+    override suspend fun setMyUserId(userId: Long) {
+        userDataStore.setUserId(userId)
     }
 
     override suspend fun getMyUser(): ApiResult<User> = try {
@@ -271,11 +207,11 @@ class UserUseCaseImpl @Inject constructor(
             } else {
                 when (response.errorCode) {
                     "AUTH_001" -> {
-                        clearToken()
+                        authUseCaseProvider.get().clearToken()
                         ApiResult.Error.Unauthorized
                     }
                     "USR_003" -> {
-                        clearToken()
+                        authUseCaseProvider.get().clearToken()
                         ApiResult.Error.NotFound
                     }
                     else -> userRepository.getMyUser()?.let {
@@ -414,6 +350,8 @@ class UserUseCaseImpl @Inject constructor(
 
     override suspend fun getRecentSearches(): ApiResult<List<RecentSearch>> {
         return try {
+            checkNetwork()?.let { return it }
+
             val response = userService.getRecentSearches()
             if (response.result == "SUCCESS") {
                 ApiResult.Success(response.data?.map { it.toDomain() } ?: emptyList())
@@ -427,6 +365,8 @@ class UserUseCaseImpl @Inject constructor(
 
     override suspend fun saveRecentSearch(userId: Long): ApiResult<Unit> {
         return try {
+            checkNetwork()?.let { return it }
+
             val response = userService.saveRecentSearch(userId)
             if (response.result == "SUCCESS") {
                 ApiResult.Success(Unit)
@@ -440,6 +380,8 @@ class UserUseCaseImpl @Inject constructor(
 
     override suspend fun deleteRecentSearch(userId: Long): ApiResult<Unit> {
         return try {
+            checkNetwork()?.let { return it }
+
             val response = userService.deleteRecentSearch(userId)
             if (response.result == "SUCCESS") {
                 ApiResult.Success(Unit)
@@ -453,6 +395,8 @@ class UserUseCaseImpl @Inject constructor(
 
     override suspend fun clearRecentSearches(): ApiResult<Unit> {
         return try {
+            checkNetwork()?.let { return it }
+
             val response = userService.clearRecentSearches()
             if (response.result == "SUCCESS") {
                 ApiResult.Success(Unit)
@@ -463,12 +407,6 @@ class UserUseCaseImpl @Inject constructor(
             e.handleNetworkException()
         }
     }
-
-    override suspend fun updateOnboardingStatus(isCompleted: Boolean) {
-        userDataStore.updateOnboardingStatus(isCompleted)
-    }
-
-    override suspend fun hasCompletedOnboarding(): Boolean = userDataStore.hasCompletedOnboarding()
 
     private suspend fun checkNetwork(): ApiResult.Error.NetworkError? {
         return if (!networkRepository.isNetworkAvailable()) {

@@ -9,7 +9,15 @@
         <activity
             android:name=".main.MainActivity"
             android:windowSoftInputMode="adjustResize"
-            android:exported="false" />
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ninezero" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".auth.AuthActivity"
             android:exported="true">

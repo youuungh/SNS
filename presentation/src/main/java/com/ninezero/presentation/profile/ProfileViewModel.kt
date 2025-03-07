@@ -62,6 +62,7 @@ class ProfileViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     reduce {
                         state.copy(
+                            myUserId = result.data.id,
                             profileImageUrl = result.data.profileImagePath,
                             username = result.data.userName,
                             postCount = result.data.postCount,
@@ -205,6 +206,7 @@ class ProfileViewModel @Inject constructor(
 
 @Immutable
 data class ProfileState(
+    val myUserId: Long = -1L,
     val profileImageUrl: String? = null,
     val username: String = "",
     val postCount: Int = 0,

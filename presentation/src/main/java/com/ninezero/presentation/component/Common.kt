@@ -116,7 +116,8 @@ fun LoadingGridProgress(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(minGridHeight),
+            .height(minGridHeight)
+            .padding(top = 80.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         CircularProgressIndicator(
@@ -147,7 +148,8 @@ fun LoadingError(
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onRetry
             )
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .padding(top = 80.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Box(
@@ -344,6 +346,68 @@ fun EmptySearchScreen() {
             ) {
                 Text(
                     text = stringResource(R.string.label_empty_search_results),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyNotificationScreen() {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        visible = true
+    }
+
+    SNSSurface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(300))
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.label_empty_notifications),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyPostDetailScreen() {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        visible = true
+    }
+
+    SNSSurface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(300))
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.label_empty_user_post),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )

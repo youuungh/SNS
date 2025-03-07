@@ -4,8 +4,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ninezero.domain.model.ApiResult
+import com.ninezero.domain.usecase.AuthUseCase
 import com.ninezero.domain.usecase.ThemeUseCase
-import com.ninezero.domain.usecase.UserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingViewModel @Inject constructor(
-    private val userUseCase: UserUseCase,
+    private val authUseCase: AuthUseCase,
     private val themeUseCase: ThemeUseCase
 ) : ViewModel(), ContainerHost<SettingState, SettingSideEffect> {
     override val container: Container<SettingState, SettingSideEffect> = container(initialState = SettingState())
@@ -44,7 +44,7 @@ class SettingViewModel @Inject constructor(
     fun onSignOut() = intent {
         reduce { state.copy(isLoading = true) }
 
-        when (val result = userUseCase.clearToken()) {
+        when (val result = authUseCase.clearToken()) {
             is ApiResult.Success -> postSideEffect(SettingSideEffect.NavigateToLogin)
             is ApiResult.Error -> {
                 reduce { state.copy(isLoading = false) }

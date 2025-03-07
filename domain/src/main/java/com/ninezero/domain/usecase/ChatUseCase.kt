@@ -15,4 +15,5 @@ interface ChatUseCase {
     suspend fun markAsRead(roomId: String, messageId: String): ApiResult<Unit>
     suspend fun leaveRoom(roomId: String): ApiResult<Unit>
     fun observeMessages(): Flow<ChatMessage>
+    fun resetReconnectAttempts()
 }

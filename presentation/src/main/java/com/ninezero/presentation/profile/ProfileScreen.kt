@@ -80,7 +80,8 @@ fun ProfileScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: ProfileViewModel = hiltViewModel(),
     onProfileImageChange: () -> Unit,
-    onNavigateToUser: (Long) -> Unit
+    onNavigateToUser: (Long) -> Unit,
+    onNavigateToPostDetail: (userId: Long, postId: Long) -> Unit
 ) {
     val state = viewModel.collectAsState().value
     val suggestedUsers = state.suggestedUsers.collectAsLazyPagingItems()
@@ -207,17 +208,18 @@ fun ProfileScreen(
                                             ProfileTab.POSTS -> {
                                                 when (myPosts.loadState.refresh) {
                                                     is LoadState.Loading -> {
-                                                        LoadingGridProgress(
-                                                            minGridHeight = minGridHeight,
-                                                            modifier = Modifier.padding(top = 80.dp)
-                                                        )
+                                                        LoadingGridProgress(minGridHeight = minGridHeight)
                                                     }
 
                                                     else -> {
                                                         if (myPosts.itemCount == 0 && myPosts.loadState.refresh is LoadState.NotLoading) {
                                                             EmptyMyPostScreen(minGridHeight = minGridHeight)
                                                         } else {
-                                                            MyPostItems(myPosts = myPosts, minGridHeight = minGridHeight)
+                                                            MyPostItems(
+                                                                myPosts = myPosts,
+                                                                minGridHeight = minGridHeight,
+                                                                onPostClick = { postId -> onNavigateToPostDetail(state.myUserId, postId) }
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -225,17 +227,13 @@ fun ProfileScreen(
                                             ProfileTab.SAVED -> {
                                                 when (savedPosts.loadState.refresh) {
                                                     is LoadState.Loading -> {
-                                                        LoadingGridProgress(
-                                                            minGridHeight = minGridHeight,
-                                                            modifier = Modifier.padding(top = 80.dp)
-                                                        )
+                                                        LoadingGridProgress(minGridHeight = minGridHeight)
                                                     }
 
                                                     is LoadState.Error -> {
                                                         LoadingError(
                                                             onRetry = { savedPosts.refresh() },
-                                                            minHeight = minGridHeight,
-                                                            modifier = Modifier.padding(top = 80.dp)
+                                                            minHeight = minGridHeight
                                                         )
                                                     }
 
@@ -243,7 +241,11 @@ fun ProfileScreen(
                                                         if (savedPosts.itemCount == 0 && savedPosts.loadState.refresh is LoadState.NotLoading) {
                                                             EmptySavedPostScreen(minGridHeight = minGridHeight)
                                                         } else {
-                                                            SavedPostItems(savedPosts = savedPosts, minGridHeight = minGridHeight)
+                                                            SavedPostItems(
+                                                                savedPosts = savedPosts,
+                                                                minGridHeight = minGridHeight,
+                                                                onPostClick = { postId -> onNavigateToPostDetail(state.myUserId, postId) }
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -394,7 +396,8 @@ private fun SuggestedUsersSection(
 @Composable
 private fun MyPostItems(
     myPosts: LazyPagingItems<Post>,
-    minGridHeight: Dp
+    minGridHeight: Dp,
+    onPostClick: (Long) -> Unit
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val gridHeight = calculateGridHeight(myPosts.itemCount, screenHeight)
@@ -417,7 +420,7 @@ private fun MyPostItems(
                         modifier = Modifier
                             .fillMaxWidth()
                             .bounceClick()
-                            .clickable { /* 상세 페이지 */ }
+                            .clickable { onPostClick(post.id) }
                     ) {
                         key(post.images.first()) {
                             AsyncImage(
@@ -468,7 +471,8 @@ private fun MyPostItems(
 @Composable
 private fun SavedPostItems(
     savedPosts: LazyPagingItems<Post>,
-    minGridHeight: Dp
+    minGridHeight: Dp,
+    onPostClick: (Long) -> Unit
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val gridHeight = calculateGridHeight(savedPosts.itemCount, screenHeight)
@@ -491,7 +495,7 @@ private fun SavedPostItems(
                         modifier = Modifier
                             .fillMaxWidth()
                             .bounceClick()
-                            .clickable { /* 상세 페이지 */ }
+                            .clickable { onPostClick(post.id) }
                     ) {
                         key(post.images.first()) {
                             AsyncImage(

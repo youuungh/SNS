@@ -1,6 +1,7 @@
-package com.ninezero.presentation.feed
+package com.ninezero.presentation.detail
 
 import androidx.compose.runtime.Immutable
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
@@ -8,11 +9,11 @@ import androidx.paging.cachedIn
 import androidx.paging.map
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.model.Comment
+import com.ninezero.domain.model.Post
 import com.ninezero.domain.repository.NetworkRepository
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.UserUseCase
 import com.ninezero.presentation.model.PostCardModel
-import com.ninezero.presentation.model.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -24,15 +25,18 @@ import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
 import timber.log.Timber
 import javax.inject.Inject
-import kotlin.collections.plus
 
 @HiltViewModel
-class FeedViewModel @Inject constructor(
-    private val userUseCase: UserUseCase,
+class PostDetailViewModel @Inject constructor(
     private val feedUseCase: FeedUseCase,
-    private val networkRepository: NetworkRepository
-) : ViewModel(), ContainerHost<FeedState, FeedSideEffect> {
-    override val container: Container<FeedState, FeedSideEffect> = container(initialState = FeedState())
+    private val userUseCase: UserUseCase,
+    private val networkRepository: NetworkRepository,
+    savedStateHandle: SavedStateHandle
+) : ViewModel(), ContainerHost<PostDetailState, PostDetailSideEffect> {
+    private val userId: Long = checkNotNull(savedStateHandle["userId"])
+    private val postId: Long = checkNotNull(savedStateHandle["postId"])
+
+    override val container: Container<PostDetailState, PostDetailSideEffect> = container(initialState = PostDetailState())
 
     private var isInitialLoad = true
 
@@ -53,40 +57,124 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun load() = intent {
+        reduce { state.copy(isLoading = true) }
         try {
-            val isOnline = networkRepository.isNetworkAvailable()
             val myUserId = userUseCase.getMyUserId()
-
             reduce { state.copy(myUserId = myUserId) }
 
-            when (val result = feedUseCase.getPosts()) {
+            when (val result = feedUseCase.getPostsById(userId)) {
                 is ApiResult.Success -> {
-                    val posts = result.data
-                        .map { pagingData -> pagingData.map { it.toModel() } }
-                        .cachedIn(viewModelScope)
-
-                    reduce { state.copy(posts = posts, isRefreshing = false) }
-
-                    if (!isOnline) {
-                        postSideEffect(FeedSideEffect.ShowSnackbar("네트워크 연결 오류"))
+                    val posts = result.data.cachedIn(viewModelScope)
+                    reduce {
+                        state.copy(
+                            posts = posts,
+                            isLoading = false,
+                            isRefreshing = false,
+                            initialPostId = postId
+                        )
                     }
                 }
-
                 is ApiResult.Error -> {
-                    reduce { state.copy(isRefreshing = false) }
-                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                    reduce { state.copy(isLoading = false, isRefreshing = false) }
+                    postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
                 }
             }
         } catch (e: Exception) {
-            reduce { state.copy(isRefreshing = false) }
+            reduce { state.copy(isLoading = false, isRefreshing = false) }
             Timber.e(e)
         }
     }
 
-    fun refresh() = intent {
-        reduce { state.copy(isRefreshing = true) }
+    fun setTargetCommentId(commentId: Long) = intent {
+        reduce { state.copy(targetCommentId = commentId) }
+    }
+
+    fun clearTargetCommentId() = intent {
+        reduce { state.copy(targetCommentId = null) }
+    }
+
+    fun showOptionsSheet(post: PostCardModel) = intent {
+        reduce { state.copy(optionsSheetPost = post) }
+    }
+
+    fun hideOptionsSheet() = intent {
+        reduce { state.copy(optionsSheetPost = null) }
+    }
+
+    fun showDeletePostDialog(post: PostCardModel) = intent {
+        reduce { state.copy(dialog = PostDetailDialog.DeletePost(post)) }
+    }
+
+    fun onPostDelete(model: PostCardModel) = intent {
+        when (val result = feedUseCase.deletePost(model.postId)) {
+            is ApiResult.Success -> {
+                reduce {
+                    state.copy(
+                        optionsSheetPost = null,
+                        dialog = PostDetailDialog.Hidden
+                    )
+                }
+                load()
+            }
+            is ApiResult.Error -> {
+                postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
+            }
+        }
+    }
+
+    fun showEditSheet(post: PostCardModel) = intent {
+        reduce { state.copy(editSheetPost = post) }
+    }
+
+    fun hideEditSheet() = intent {
+        reduce { state.copy(editSheetPost = null) }
+    }
+
+    fun onPostEdit(postId: Long, content: String, images: List<String>) = intent {
+        reduce { state.copy(isEditing = true) }
         delay(2000)
-        load()
+
+        when (val result = feedUseCase.updatePost(postId, content, images)) {
+            is ApiResult.Success -> {
+                reduce {
+                    state.copy(
+                        editSheetPost = null,
+                        isEditing = false
+                    )
+                }
+                load()
+            }
+            is ApiResult.Error -> {
+                reduce { state.copy(isEditing = false) }
+                handleError(result)
+            }
+        }
+    }
+
+    fun showCommentsSheet(post: PostCardModel) = intent {
+        reduce {
+            state.copy(
+                commentsSheetPost = post,
+                isLoadingComments = true
+            )
+        }
+        loadComments(post.postId)
+    }
+
+    fun hideCommentsSheet() = intent {
+        reduce {
+            state.copy(
+                commentsSheetPost = null,
+                comments = emptyFlow(),
+                commentCount = emptyMap(),
+                replyToComment = null,
+                expandedCommentIds = emptyMap(),
+                loadingReplyIds = emptySet(),
+                replies = emptyMap(),
+                replyCount = emptyMap(),
+                targetCommentId = null
+            )
+        }
     }
 
     private fun loadComments(postId: Long) {
@@ -115,10 +203,32 @@ class FeedViewModel @Inject constructor(
                 is ApiResult.Error -> {
                     intent {
                         reduce { state.copy(isLoadingComments = false) }
-                        postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                        postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
                     }
                 }
             }
+        }
+    }
+
+    fun setReplyToComment(comment: Comment?) = intent {
+        reduce { state.copy(replyToComment = comment) }
+    }
+
+    fun toggleRepliesVisibility(commentId: Long) = intent {
+        val currentVisibility = state.expandedCommentIds[commentId] == true
+
+        reduce {
+            state.copy(
+                expandedCommentIds = if (currentVisibility) {
+                    state.expandedCommentIds - commentId
+                } else {
+                    state.expandedCommentIds + (commentId to true)
+                }
+            )
+        }
+
+        if (!currentVisibility) {
+            loadRepliesForComment(commentId)
         }
     }
 
@@ -149,123 +259,10 @@ class FeedViewModel @Inject constructor(
                         reduce {
                             state.copy(loadingReplyIds = state.loadingReplyIds - commentId)
                         }
-                        postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                        postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
                     }
                 }
             }
-        }
-    }
-
-    fun setReplyToComment(comment: Comment?) = intent {
-        reduce { state.copy(replyToComment = comment) }
-    }
-
-    fun toggleRepliesVisibility(commentId: Long) = intent {
-        val currentVisibility = state.expandedCommentIds[commentId] == true
-
-        reduce {
-            state.copy(
-                expandedCommentIds = if (currentVisibility) {
-                    state.expandedCommentIds - commentId
-                } else {
-                    state.expandedCommentIds + (commentId to true)
-                }
-            )
-        }
-
-        if (!currentVisibility) {
-            loadRepliesForComment(commentId)
-        }
-    }
-
-    fun showOptionsSheet(post: PostCardModel) = intent {
-        reduce { state.copy(optionsSheetPost = post) }
-    }
-
-    fun hideOptionsSheet() = intent {
-        reduce { state.copy(optionsSheetPost = null) }
-    }
-
-    fun showCommentsSheet(post: PostCardModel) = intent {
-        reduce {
-            state.copy(
-                commentsSheetPost = post,
-                isLoadingComments = true
-            )
-        }
-        loadComments(post.postId)
-    }
-
-    fun hideCommentsSheet() = intent {
-        reduce {
-            state.copy(
-                commentsSheetPost = null,
-                comments = emptyFlow(),
-                commentCount = emptyMap(),
-                replyToComment = null,
-                expandedCommentIds = emptyMap(),
-                loadingReplyIds = emptySet(),
-                replies = emptyMap(),
-                replyCount = emptyMap()
-            )
-        }
-    }
-
-    fun showEditSheet(post: PostCardModel) = intent {
-        reduce { state.copy(editSheetPost = post) }
-    }
-
-    fun hideEditSheet() = intent {
-        reduce { state.copy(editSheetPost = null) }
-    }
-
-    fun showDeletePostDialog(post: PostCardModel) = intent {
-        reduce { state.copy(dialog = FeedDialog.DeletePost(post)) }
-    }
-
-    fun showDeleteCommentDialog(postId: Long, comment: Comment) = intent {
-        reduce { state.copy(dialog = FeedDialog.DeleteComment(postId, comment)) }
-    }
-
-    fun hideDialog() = intent {
-        reduce { state.copy(dialog = FeedDialog.Hidden) }
-    }
-
-    fun onPostEdit(postId: Long, content: String, images: List<String>) = intent {
-        reduce { state.copy(isEditing = true) }
-        delay(2000)
-
-        when (val result = feedUseCase.updatePost(postId, content, images)) {
-            is ApiResult.Success -> {
-                reduce {
-                    state.copy(
-                        editSheetPost = null,
-                        isEditing = false
-                    )
-                }
-                load()
-            }
-            is ApiResult.Error -> {
-                reduce { state.copy(isEditing = false) }
-                handleError(result)
-            }
-        }
-    }
-
-    fun onPostDelete(model: PostCardModel) = intent {
-        when (val result = feedUseCase.deletePost(model.postId)) {
-            is ApiResult.Success -> {
-                reduce {
-                    state.copy(
-                        deletedPostIds = state.deletedPostIds + model.postId,
-                        optionsSheetPost = null,
-                        dialog = FeedDialog.Hidden
-                    )
-                }
-                load()
-            }
-
-            is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
         }
     }
 
@@ -333,6 +330,14 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun showDeleteCommentDialog(postId: Long, comment: Comment) = intent {
+        reduce { state.copy(dialog = PostDetailDialog.DeleteComment(postId, comment)) }
+    }
+
+    fun hideDialog() = intent {
+        reduce { state.copy(dialog = PostDetailDialog.Hidden) }
+    }
+
     fun onDeleteComment(postId: Long, comment: Comment) = intent {
         val currentCount = state.commentCount[postId] ?: state.commentsSheetPost?.commentCount ?: 0
         val parentId = comment.parentId
@@ -361,7 +366,7 @@ class FeedViewModel @Inject constructor(
                                     comments = updatedComments,
                                     expandedCommentIds = state.expandedCommentIds - parentId,
                                     replies = state.replies - parentId,
-                                    dialog = FeedDialog.Hidden
+                                    dialog = PostDetailDialog.Hidden
                                 )
                             }
 
@@ -380,14 +385,14 @@ class FeedViewModel @Inject constructor(
                             expandedCommentIds = state.expandedCommentIds - comment.id,
                             replies = state.replies - comment.id,
                             replyCount = state.replyCount - comment.id,
-                            dialog = FeedDialog.Hidden
+                            dialog = PostDetailDialog.Hidden
                         )
                     }
                     loadComments(postId)
                 }
             }
             is ApiResult.Error -> {
-                handleError(result)
+                postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         }
     }
@@ -407,7 +412,7 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         } else {
             when (val result = feedUseCase.likePost(postId)) {
@@ -420,7 +425,7 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         }
     }
@@ -437,7 +442,7 @@ class FeedViewModel @Inject constructor(
                         )
                     }
                 }
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         } else {
             when (val result = userUseCase.followUser(userId)) {
@@ -448,7 +453,7 @@ class FeedViewModel @Inject constructor(
                         )
                     }
                 }
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         }
     }
@@ -466,7 +471,7 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         } else {
             when (val result = feedUseCase.savePost(postId)) {
@@ -478,28 +483,34 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         }
     }
 
     private fun handleError(error: ApiResult.Error) = intent {
-        reduce { state.copy(dialog = FeedDialog.Error(error.message)) }
+        reduce { state.copy(dialog = PostDetailDialog.Error(error.message)) }
         viewModelScope.launch {
             delay(2000)
-            reduce { state.copy(dialog = FeedDialog.Hidden) }
+            reduce { state.copy(dialog = PostDetailDialog.Hidden) }
         }
-        postSideEffect(FeedSideEffect.ShowSnackbar(error.message))
+        postSideEffect(PostDetailSideEffect.ShowSnackbar(error.message))
     }
 }
 
 @Immutable
-data class FeedState(
+data class PostDetailState(
     val myUserId: Long = -1L,
-    val posts: Flow<PagingData<PostCardModel>> = emptyFlow(),
-    val deletedPostIds: Set<Long> = emptySet(),
+    val initialPostId: Long = -1L,
+    val posts: Flow<PagingData<Post>> = emptyFlow(),
 
-    // comment
+    // 좋아요, 저장, 팔로우 상태
+    val likesCount: Map<Long, Int> = emptyMap(),
+    val isLiked: Map<Long, Boolean> = emptyMap(),
+    val isFollowing: Map<Long, Boolean> = emptyMap(),
+    val isSaved: Map<Long, Boolean> = emptyMap(),
+
+    // 댓글 관련
     val comments: Flow<PagingData<Comment>> = emptyFlow(),
     val commentCount: Map<Long, Int> = emptyMap(),
     val isLoadingComments: Boolean = false,
@@ -508,28 +519,29 @@ data class FeedState(
     val loadingReplyIds: Set<Long> = emptySet(),
     val replies: Map<Long, List<Comment>> = emptyMap(),
     val replyCount: Map<Long, Int> = emptyMap(),
-
-    // like & save
-    val likesCount: Map<Long, Int> = emptyMap(),
-    val isLiked: Map<Long, Boolean> = emptyMap(),
-    val isFollowing: Map<Long, Boolean> = emptyMap(),
-    val isSaved: Map<Long, Boolean> = emptyMap(),
-    val isRefreshing: Boolean = false,
-    val isEditing: Boolean = false,
-    val dialog: FeedDialog = FeedDialog.Hidden,
-    val optionsSheetPost: PostCardModel? = null,
     val commentsSheetPost: PostCardModel? = null,
-    val editSheetPost: PostCardModel? = null
+    val targetCommentId: Long? = null,
+
+    // 옵션 관련
+    val optionsSheetPost: PostCardModel? = null,
+    val editSheetPost: PostCardModel? = null,
+    val isEditing: Boolean = false,
+
+    // 다이얼로그 상태
+    val dialog: PostDetailDialog = PostDetailDialog.Hidden,
+
+    // 로딩 상태
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false
 )
 
-sealed interface FeedDialog {
-    data object Hidden : FeedDialog
-    data class DeletePost(val post: PostCardModel) : FeedDialog
-    data class DeleteComment(val postId: Long, val comment: Comment) : FeedDialog
-    data class Error(val message: String) : FeedDialog
+sealed interface PostDetailDialog {
+    data object Hidden : PostDetailDialog
+    data class DeleteComment(val postId: Long, val comment: Comment) : PostDetailDialog
+    data class DeletePost(val post: PostCardModel) : PostDetailDialog
+    data class Error(val message: String) : PostDetailDialog
 }
 
-sealed interface FeedSideEffect {
-    data class ShowSnackbar(val message: String) : FeedSideEffect
-    object NavigateToLogin : FeedSideEffect
+sealed interface PostDetailSideEffect {
+    data class ShowSnackbar(val message: String) : PostDetailSideEffect
 }

@@ -3,7 +3,7 @@ package com.ninezero.presentation.auth.login
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import com.ninezero.domain.model.ApiResult
-import com.ninezero.domain.usecase.UserUseCase
+import com.ninezero.domain.usecase.AuthUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val userUseCase: UserUseCase
+    private val authUseCase: AuthUseCase
 ): ViewModel(), ContainerHost<LoginState, LoginSideEffect> {
     override val container: Container<LoginState, LoginSideEffect> = container(initialState = LoginState())
 
@@ -39,7 +39,7 @@ class LoginViewModel @Inject constructor(
     fun onLogin() = intent {
         reduce { state.copy(isLoading = true) }
 
-        when (val result = userUseCase.login(id = state.id, password = state.password)) {
+        when (val result = authUseCase.login(id = state.id, password = state.password)) {
             is ApiResult.Success -> {
                 Timber.d("Login Success: ${result.data}")
                 reduce { state.copy(isLoading = false) }

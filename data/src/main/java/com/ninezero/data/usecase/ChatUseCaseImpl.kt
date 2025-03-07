@@ -25,8 +25,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.min
 
 class ChatUseCaseImpl @Inject constructor(
     private val chatService: ChatService,
@@ -39,8 +42,24 @@ class ChatUseCaseImpl @Inject constructor(
     private var reconnectJob: Job? = null
     private var isCleanedUp = false
 
+    private var reconnectAttempts = AtomicInteger(0)
+    private val maxReconnectAttempts = 5
+    private val isReconnecting = AtomicBoolean(false)
+    private val baseReconnectDelay = 5000L
+    private val maxReconnectDelay = 60000L
+
+    private var lastReconnectAttemptTime = 0L
+    private val reconnectCooldown = 10000L
+
     override suspend fun connectWebSocket() {
+        if (isReconnecting.get()) {
+            Timber.d("이미 WebSocket 재연결 진행 중입니다")
+            return
+        }
+
         try {
+            isReconnecting.set(true)
+
             val user = when (val result = userUseCase.getMyUser()) {
                 is ApiResult.Success -> result.data
                 is ApiResult.Error -> throw Exception(result.message)
@@ -69,12 +88,59 @@ class ChatUseCaseImpl @Inject constructor(
                     }
                 }
             )
+
+            reconnectAttempts.set(0)
+            isReconnecting.set(false)
         } catch (e: Exception) {
+            isReconnecting.set(false)
             if (e !is CancellationException) {
                 Timber.e(e, "WebSocket 연결 실패")
                 throw e
             }
         }
+    }
+
+    private fun handleReconnection() {
+        if (isCleanedUp) return
+        if (isReconnecting.get()) return
+
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch {
+            if (!networkRepository.isNetworkAvailable()) {
+                Timber.d("네트워크 연결 실패, 재연결을 시도하지 않음")
+                return@launch
+            }
+
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastReconnectAttemptTime < reconnectCooldown) {
+                Timber.d("재연결 쿨다운, 재연결을 시도하지 않음")
+                return@launch
+            }
+
+            val attempts = reconnectAttempts.incrementAndGet()
+            if (attempts > maxReconnectAttempts) {
+                Timber.d("최대 재연결 시도 횟수($maxReconnectAttempts) 초과, 더 이상 재연결을 시도하지 않음")
+            }
+
+            val delayTime = min(baseReconnectDelay * (1 shl (attempts - 1)), maxReconnectDelay)
+            Timber.d("WebSocket 재연결 시도 (${attempts}/${maxReconnectAttempts}) - ${delayTime}ms 후 재시도")
+            lastReconnectAttemptTime = currentTime
+
+            delay(delayTime)
+            try {
+                if (!isCleanedUp) {
+                    Timber.d("WebSocket 재연결 시도 중...")
+                    connectWebSocket()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "WebSocket 재연결 실패")
+                isReconnecting.set(false)
+            }
+        }
+    }
+
+    override fun resetReconnectAttempts() {
+        reconnectAttempts.set(0)
     }
 
     fun cleanup() {
@@ -176,23 +242,6 @@ class ChatUseCaseImpl @Inject constructor(
     }
 
     override fun observeMessages(): Flow<ChatMessage> = _messages.asSharedFlow()
-
-    private fun handleReconnection() {
-        if (isCleanedUp) return
-
-        reconnectJob?.cancel()
-        reconnectJob = scope.launch {
-            delay(5000)
-            try {
-                if (!isCleanedUp) {
-                    Timber.d("WebSocket 재연결 시도")
-                    connectWebSocket()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "WebSocket 재연결 실패")
-            }
-        }
-    }
 
     private suspend fun checkNetwork(): ApiResult.Error.NetworkError? {
         return if (!networkRepository.isNetworkAvailable()) {

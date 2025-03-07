@@ -223,6 +223,18 @@ fun FeedScreen(
         )
     }
 
+    state.editSheetPost?.let { post ->
+        EditPostBottomSheet(
+            showBottomSheet = true,
+            post = post,
+            isEditing = state.isEditing,
+            onDismiss = { viewModel.hideEditSheet() },
+            onSave = { content, images ->
+                viewModel.onPostEdit(post.postId, content, images)
+            }
+        )
+    }
+
     state.commentsSheetPost?.let { post ->
         val comments = state.comments.collectAsLazyPagingItems()
 
@@ -245,18 +257,6 @@ fun FeedScreen(
             onCancelReply = { viewModel.setReplyToComment(null) },
             onToggleReplies = { commentId -> viewModel.toggleRepliesVisibility(commentId) },
             onDeleteComment = { comment -> viewModel.showDeleteCommentDialog(post.postId, comment) }
-        )
-    }
-
-    state.editSheetPost?.let { post ->
-        EditPostBottomSheet(
-            showBottomSheet = true,
-            post = post,
-            isEditing = state.isEditing,
-            onDismiss = { viewModel.hideEditSheet() },
-            onSave = { content, images ->
-                viewModel.onPostEdit(post.postId, content, images)
-            }
         )
     }
 }

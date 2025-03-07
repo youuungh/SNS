@@ -7,6 +7,7 @@ import com.ninezero.presentation.R
 sealed class MainRoute(val route: String) {
     object Main : MainRoute("main")
     object User : MainRoute("user")
+    object Notification : MainRoute("notification")
     object Chat : MainRoute("chat") {
         fun navigate(
             otherUserId: Long,
@@ -15,7 +16,32 @@ sealed class MainRoute(val route: String) {
             otherUserName: String,
             otherUserProfilePath: String?,
             myUserId: Long
-        ) = "chat/$otherUserId/$roomId/$otherUserLoginId/$otherUserName/${Uri.encode(otherUserProfilePath ?: "")}/$myUserId"
+        ): String = buildString {
+            append("chat/$otherUserId/")
+            append(roomId)
+            append("/$otherUserLoginId/$otherUserName/")
+            append(Uri.encode(otherUserProfilePath ?: ""))
+            append("/$myUserId")
+        }
+    }
+    object PostDetail : MainRoute("post_detail/{userId}/{postId}") {
+        fun navigate(
+            userId: Long,
+            postId: Long,
+            showComments: Boolean = false,
+            commentId: Long? = null
+        ): String = buildString {
+            append("post_detail/$userId/$postId")
+
+            val params = buildList {
+                if (showComments) add("showComments=true")
+                if (commentId != null) add("commentId=$commentId")
+            }
+
+            if (params.isNotEmpty()) {
+                append("?${params.joinToString("&")}")
+            }
+        }
     }
 
     sealed class BottomNavItem(

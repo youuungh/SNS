@@ -36,6 +36,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ninezero.domain.model.Comment
+import com.ninezero.domain.model.Notification
 import com.ninezero.domain.model.chat.ChatMessage
 import com.ninezero.domain.model.chat.ChatRoom
 import com.ninezero.domain.model.chat.ChatRoomParticipant
@@ -50,6 +51,7 @@ import com.ninezero.presentation.theme.snsDefaultLight
 import com.ninezero.presentation.theme.snsLightBg2
 import com.ninezero.presentation.util.formatChatDateTime
 import com.ninezero.presentation.util.formatChatTime
+import com.ninezero.presentation.util.formatRelativeTime
 import com.ninezero.presentation.util.formatSimpleChatDateTime
 
 @Composable
@@ -278,6 +280,7 @@ fun ClearSection(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 16.dp)
             )
@@ -543,6 +546,98 @@ fun ChatRoomItem(
             }
         }
     }
+}
+
+@Composable
+fun NotificationItem(
+    notification: Notification,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .bounceClick()
+            .clip(MaterialTheme.shapes.small)
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+                onLongClick = onDelete
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!notification.isRead) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .align(Alignment.CenterVertically)
+                        .padding(end = 8.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            SNSProfileImage(
+                imageUrl = notification.senderProfileImagePath,
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.Top)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = getNotificationText(notification),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = formatRelativeTime(notification.createdAt),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun getNotificationText(notification: Notification): String {
+    return when (notification.type) {
+        "like" -> "${notification.senderName ?: ""}님이 회원님의 게시물을 좋아합니다."
+        "comment" -> notification.body
+        "follow" -> "${notification.senderName ?: ""}님이 회원님을 팔로우하기 시작했습니다."
+        "chat" -> "${notification.senderName ?: ""}님이 메시지를 보냈습니다: ${notification.body}"
+        else -> notification.body
+    }
+}
+
+@Composable
+fun NotificationSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
 }
 
 @Preview
@@ -863,6 +958,186 @@ fun CommentWithRepliesPreview() {
                 onDeleteComment = {},
                 modifier = Modifier.padding(16.dp)
             )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun NotificationItemPreview() {
+    SNSTheme {
+        Surface {
+            NotificationItem(
+                notification = Notification(
+                    id = 1L,
+                    type = "like",
+                    body = "회원님의 게시물을 좋아합니다.",
+                    senderId = 123L,
+                    senderLoginId = "123",
+                    senderName = "user123",
+                    senderProfileImagePath = null,
+                    boardId = 456L,
+                    commentId = null,
+                    roomId = null,
+                    isRead = false,
+                    createdAt = "2025-02-27T14:30:00"
+                ),
+                onClick = { },
+                onDelete = { }
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun NotificationItemReadStatePreview() {
+    SNSTheme {
+        Surface {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                NotificationItem(
+                    notification = Notification(
+                        id = 1L,
+                        type = "like",
+                        body = "회원님의 게시물을 좋아합니다.",
+                        senderId = 123L,
+                        senderLoginId = "123",
+                        senderName = "user123",
+                        senderProfileImagePath = null,
+                        boardId = 456L,
+                        commentId = null,
+                        roomId = null,
+                        isRead = false,
+                        createdAt = "2025-02-27T14:30:00"
+                    ),
+                    onClick = { },
+                    onDelete = { }
+                )
+
+                NotificationItem(
+                    notification = Notification(
+                        id = 2L,
+                        type = "like",
+                        body = "회원님의 게시물을 좋아합니다.",
+                        senderId = 123L,
+                        senderLoginId = "123",
+                        senderName = "user123",
+                        senderProfileImagePath = null,
+                        boardId = 456L,
+                        commentId = null,
+                        roomId = null,
+                        isRead = true,
+                        createdAt = "2025-02-27T10:30:00"
+                    ),
+                    onClick = { },
+                    onDelete = { }
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun NotificationItemTypesPreview() {
+    SNSTheme {
+        Surface {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                NotificationItem(
+                    notification = Notification(
+                        id = 1L,
+                        type = "like",
+                        body = "회원님의 게시물을 좋아합니다.",
+                        senderId = 123L,
+                        senderLoginId = "123",
+                        senderName = "user123",
+                        senderProfileImagePath = null,
+                        boardId = 456L,
+                        commentId = null,
+                        roomId = null,
+                        isRead = false,
+                        createdAt = "2025-02-27T14:30:00"
+                    ),
+                    onClick = { },
+                    onDelete = { }
+                )
+
+                NotificationItem(
+                    notification = Notification(
+                        id = 2L,
+                        type = "comment",
+                        body = "멋진 사진이네요! 어디서 찍으셨나요?",
+                        senderId = 234L,
+                        senderLoginId = "234",
+                        senderName = "commenter",
+                        senderProfileImagePath = null,
+                        boardId = 456L,
+                        commentId = 789L,
+                        roomId = null,
+                        isRead = true,
+                        createdAt = "2025-02-26T09:15:00"
+                    ),
+                    onClick = { },
+                    onDelete = { }
+                )
+
+                NotificationItem(
+                    notification = Notification(
+                        id = 3L,
+                        type = "follow",
+                        body = "회원님을 팔로우하기 시작했습니다.",
+                        senderId = 345L,
+                        senderLoginId = "345",
+                        senderName = "new_follower",
+                        senderProfileImagePath = null,
+                        boardId = null,
+                        commentId = null,
+                        roomId = null,
+                        isRead = false,
+                        createdAt = "2025-02-25T18:42:00"
+                    ),
+                    onClick = { },
+                    onDelete = { }
+                )
+
+                NotificationItem(
+                    notification = Notification(
+                        id = 4L,
+                        type = "chat",
+                        body = "안녕하세요! 메시지 드립니다.",
+                        senderId = 456L,
+                        senderLoginId = "456",
+                        senderName = "messenger",
+                        senderProfileImagePath = null,
+                        boardId = null,
+                        commentId = null,
+                        roomId = "room123",
+                        isRead = true,
+                        createdAt = "2025-02-24T10:05:00"
+                    ),
+                    onClick = { },
+                    onDelete = { }
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun NotificationSectionHeaderPreview() {
+    SNSTheme {
+        Surface {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                NotificationSectionHeader(title = "오늘")
+                NotificationSectionHeader(title = "어제")
+                NotificationSectionHeader(title = "최근 30일")
+                NotificationSectionHeader(title = "이전 활동")
+            }
         }
     }
 }

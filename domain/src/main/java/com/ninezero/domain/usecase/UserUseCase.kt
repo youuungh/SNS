@@ -7,11 +7,8 @@ import com.ninezero.domain.model.User
 import kotlinx.coroutines.flow.Flow
 
 interface UserUseCase {
-    suspend fun login(id: String, password: String): ApiResult<String>
-    suspend fun signUp(id: String, userName: String, password: String): ApiResult<Boolean>
-    suspend fun getToken(): String?
-    suspend fun setToken(token: String)
-    suspend fun clearToken(): ApiResult<Unit>
+    suspend fun getMyUserId(): Long
+    suspend fun setMyUserId(userId: Long)
     suspend fun getMyUser(): ApiResult<User>
     suspend fun setMyUser(userName: String? = null, profileImagePath: String? = null): ApiResult<Unit>
     suspend fun setProfileImage(uri: String): ApiResult<Unit>
@@ -26,7 +23,4 @@ interface UserUseCase {
     suspend fun saveRecentSearch(userId: Long): ApiResult<Unit>
     suspend fun deleteRecentSearch(userId: Long): ApiResult<Unit>
     suspend fun clearRecentSearches(): ApiResult<Unit>
-
-    suspend fun updateOnboardingStatus(isCompleted: Boolean)
-    suspend fun hasCompletedOnboarding(): Boolean
 }

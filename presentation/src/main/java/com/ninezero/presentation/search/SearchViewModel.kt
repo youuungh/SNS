@@ -38,35 +38,44 @@ class SearchViewModel @Inject constructor(
     val isSearchMode = _isSearchMode.asStateFlow()
 
     private var searchJob: Job? = null
+    private var isInitialLoad = true
 
     init {
-        loadRecentSearches()
-        loadExplorePosts()
+        viewModelScope.launch {
+            networkRepository.observeNetworkConnection()
+                .collect { isOnline ->
+                    if (isOnline && !isInitialLoad) {
+                        loadRecentSearches()
+                        loadExplorePosts()
+                    }
+                }
+        }
+
+        viewModelScope.launch {
+            loadRecentSearches()
+            loadExplorePosts()
+            isInitialLoad = false
+        }
     }
 
     private fun loadExplorePosts() = intent {
         try {
             reduce { state.copy(isLoading = true) }
 
-            if (networkRepository.isNetworkAvailable()) {
-                when (val result = feedUseCase.getPosts()) {
-                    is ApiResult.Success -> {
-                        reduce {
-                            state.copy(
-                                posts = result.data.cachedIn(viewModelScope),
-                                isLoading = false,
-                                isRefreshing = false
-                            )
-                        }
-                    }
-                    is ApiResult.Error -> {
-                        reduce { state.copy(isLoading = false, isRefreshing = false) }
-                        postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+            when (val result = feedUseCase.getPosts()) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            posts = result.data.cachedIn(viewModelScope),
+                            isLoading = false,
+                            isRefreshing = false
+                        )
                     }
                 }
-            } else {
-                reduce { state.copy(isLoading = false, isRefreshing = false) }
-                postSideEffect(SearchSideEffect.ShowSnackbar("네트워크 연결 오류"))
+                is ApiResult.Error -> {
+                    reduce { state.copy(isLoading = false, isRefreshing = false) }
+                    postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+                }
             }
         } catch (e: Exception) {
             reduce { state.copy(isLoading = false, isRefreshing = false) }
@@ -86,7 +95,9 @@ class SearchViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     reduce { state.copy(recentSearches = result.data) }
                 }
-                is ApiResult.Error -> postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> {
+                    postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+                }
             }
         } catch (e: Exception) {
             Timber.e(e)
@@ -106,26 +117,31 @@ class SearchViewModel @Inject constructor(
         searchJob?.cancel()
         if (query.isNotEmpty()) {
             searchJob = viewModelScope.launch {
-                reduce { state.copy(isLoading = true) }
+                val isOnline = networkRepository.isNetworkAvailable()
+                reduce { state.copy(isLoading = true, isError = false) }
                 delay(300)
 
-                when (val result = userUseCase.searchUsers(query)) {
-                    is ApiResult.Success -> {
-                        reduce {
-                            state.copy(
-                                searchResults = result.data.cachedIn(viewModelScope),
-                                isLoading = false
-                            )
+                if (isOnline) {
+                    when (val result = userUseCase.searchUsers(query)) {
+                        is ApiResult.Success -> {
+                            reduce {
+                                state.copy(
+                                    searchResults = result.data.cachedIn(viewModelScope),
+                                    isLoading = false,
+                                    isError = false
+                                )
+                            }
+                        }
+                        is ApiResult.Error -> {
+                            reduce { state.copy(isLoading = false, isError = true) }
                         }
                     }
-                    is ApiResult.Error -> {
-                        reduce { state.copy(isLoading = false) }
-                        postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
-                    }
+                } else {
+                    reduce { state.copy(isLoading = false, isError = true) }
                 }
             }
         } else {
-            reduce { state.copy(searchResults = emptyFlow(), isLoading = false) }
+            reduce { state.copy(searchResults = emptyFlow(), isLoading = false, isError = false) }
         }
     }
 
@@ -159,7 +175,9 @@ class SearchViewModel @Inject constructor(
                     )
                 }
             }
-            is ApiResult.Error -> postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+            is ApiResult.Error -> {
+                postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+            }
         }
     }
 
@@ -168,7 +186,9 @@ class SearchViewModel @Inject constructor(
             is ApiResult.Success -> {
                 reduce { state.copy(recentSearches = emptyList()) }
             }
-            is ApiResult.Error -> postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+            is ApiResult.Error -> {
+                postSideEffect(SearchSideEffect.ShowSnackbar(result.message))
+            }
         }
     }
 }
@@ -181,6 +201,7 @@ data class SearchState(
     val recentSearches: List<RecentSearch> = emptyList(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
+    val isError: Boolean = false
 )
 
 sealed interface SearchSideEffect {

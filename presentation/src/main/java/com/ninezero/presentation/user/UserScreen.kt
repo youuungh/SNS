@@ -73,7 +73,8 @@ fun UserScreen(
         otherUserName: String,
         otherUserProfilePath: String?,
         myUserId: Long
-    ) -> Unit
+    ) -> Unit,
+    onNavigateToPostDetail: (userId: Long, postId: Long) -> Unit
 ) {
     val state = viewModel.collectAsState().value
     val posts = state.posts.collectAsLazyPagingItems()
@@ -169,7 +170,11 @@ fun UserScreen(
                                             if (posts.itemCount == 0 && posts.loadState.refresh is LoadState.NotLoading) {
                                                 EmptyUserPostScreen(minGridHeight = minGridHeight)
                                             } else {
-                                                UserPostItems(posts = posts, minGridHeight = minGridHeight)
+                                                UserPostItems(
+                                                    posts = posts,
+                                                    minGridHeight = minGridHeight,
+                                                    onPostClick = { postId -> onNavigateToPostDetail(userId, postId) }
+                                                )
                                             }
                                         }
                                     }
@@ -276,7 +281,8 @@ private fun ProfileHeaderSection(
 @Composable
 private fun UserPostItems(
     posts: LazyPagingItems<Post>,
-    minGridHeight: Dp
+    minGridHeight: Dp,
+    onPostClick: (Long) -> Unit
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val gridHeight = calculateGridHeight(posts.itemCount, screenHeight)
@@ -300,7 +306,7 @@ private fun UserPostItems(
                         modifier = Modifier
                             .fillMaxWidth()
                             .bounceClick()
-                            .clickable { /* 상세 페이지 */ }
+                            .clickable { onPostClick(post.id) }
                     ) {
                         key(post.images.first()) {
                             AsyncImage(

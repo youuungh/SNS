@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
+import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -63,8 +64,12 @@ fun ChatScreen(
         state.messages
             .asSequence()
             .groupBy { message ->
-                LocalDateTime.parse(message.createdAt, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                    .toLocalDate()
+                try {
+                    LocalDateTime.parse(message.createdAt, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        .toLocalDate()
+                } catch (e: Exception) {
+                    Timber.e(e, "날짜 파싱 실패: ${message.id}")
+                }
             }
             .mapKeys { (key, values) ->
                 values.first().createdAt

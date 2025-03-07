@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.theme.snsDefault
 
@@ -35,6 +36,7 @@ fun SNSSnackbar(
     SnackbarHost(
         hostState = snackbarHostState,
         modifier = modifier
+            .zIndex(Float.MAX_VALUE)
             .navigationBarsPadding()
             .padding(16.dp)
     ) {

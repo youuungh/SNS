@@ -1,5 +1,6 @@
 package com.ninezero.data.usecase
 
+import com.ninezero.data.UserDataStore
 import com.ninezero.data.ktor.NotificationService
 import com.ninezero.data.model.dto.DeviceTokenRequest
 import com.ninezero.data.util.handleNetworkException
@@ -11,18 +12,15 @@ import javax.inject.Inject
 
 class FCMTokenUseCaseImpl @Inject constructor(
     private val notificationService: NotificationService,
+    private val userDataStore: UserDataStore,
     private val networkRepository: NetworkRepository
 ) : FCMTokenUseCase {
-
-    private var cachedToken: String? = null
 
     override suspend fun registerToken(token: String): ApiResult<Long> {
         return try {
             if (!networkRepository.isNetworkAvailable()) {
                 return ApiResult.Error.NetworkError("네트워크 연결 상태를 확인해주세요")
             }
-
-            cachedToken = token
 
             val request = DeviceTokenRequest(token = token, deviceInfo = "Android")
             val response = notificationService.registerDeviceToken(request)
@@ -50,7 +48,6 @@ class FCMTokenUseCaseImpl @Inject constructor(
 
             if (response.result == "SUCCESS") {
                 Timber.d("FCM 토큰 등록 해제 성공: $token")
-                cachedToken = null
                 ApiResult.Success(response.data!!)
             } else {
                 Timber.e("FCM 토큰 등록 해제 실패: ${response.errorMessage}")
@@ -63,6 +60,6 @@ class FCMTokenUseCaseImpl @Inject constructor(
     }
 
     override suspend fun getCurrentToken(): String? {
-        return cachedToken
+        return userDataStore.getFcmToken()
     }
 }

@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.firebase.messaging.FirebaseMessaging
+import com.ninezero.domain.usecase.AuthUseCase
 import com.ninezero.domain.usecase.FCMTokenUseCase
-import com.ninezero.domain.usecase.UserUseCase
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +25,7 @@ class App : Application(), Configuration.Provider {
     lateinit var fcmTokenUseCase: FCMTokenUseCase
 
     @Inject
-    lateinit var userUseCase: UserUseCase
+    lateinit var authUseCase: AuthUseCase
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -39,7 +39,7 @@ class App : Application(), Configuration.Provider {
     private fun initializeFCM() {
         appScope.launch {
             try {
-                userUseCase.getToken()?.let {
+                authUseCase.getToken()?.let {
                     val token = FirebaseMessaging.getInstance().token.await()
                     fcmTokenUseCase.registerToken(token)
                 }

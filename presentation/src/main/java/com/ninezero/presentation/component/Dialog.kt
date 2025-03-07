@@ -371,6 +371,130 @@ fun LeaveRoomDialog(
 }
 
 @Composable
+fun DeleteNotificationDialog(
+    openDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (openDialog) {
+        Dialog(onDismissRequest = onDismiss) {
+            Card(
+                modifier = Modifier.padding(10.dp, 5.dp, 10.dp, 10.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.delete_notification),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = stringResource(R.string.label_delete_notification),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CancelButton(
+                            text = stringResource(R.string.cancel),
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f)
+                        )
+                        ConfirmButton(
+                            text = stringResource(R.string.confirm),
+                            onClick = onConfirm,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteAllNotificationDialog(
+    openDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (openDialog) {
+        Dialog(onDismissRequest = onDismiss) {
+            Card(
+                modifier = Modifier.padding(10.dp, 5.dp, 10.dp, 10.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.delete_all_notification),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = stringResource(R.string.label_delete_all_notification),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CancelButton(
+                            text = stringResource(R.string.cancel),
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f)
+                        )
+                        ConfirmButton(
+                            text = stringResource(R.string.confirm),
+                            onClick = onConfirm,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun EditUsernameDialog(
     openDialog: Boolean,
     onDismiss: () -> Unit,
@@ -479,6 +603,32 @@ private fun SNSDialogPreview() {
 private fun LeaveRoomDialogPreview() {
     SNSTheme {
         LeaveRoomDialog(
+            openDialog = true,
+            onDismiss = {},
+            onConfirm = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DeleteNotificationDialogPreview() {
+    SNSTheme {
+        DeleteNotificationDialog(
+            openDialog = true,
+            onDismiss = {},
+            onConfirm = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DeleteAllNotificationDialogPreview() {
+    SNSTheme {
+        DeleteAllNotificationDialog(
             openDialog = true,
             onDismiss = {},
             onConfirm = {}

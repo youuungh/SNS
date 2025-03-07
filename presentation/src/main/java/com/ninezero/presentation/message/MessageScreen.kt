@@ -34,6 +34,7 @@ import com.ninezero.presentation.component.LeaveRoomDialog
 import com.ninezero.presentation.component.NetworkErrorScreen
 import com.ninezero.presentation.component.SNSSurface
 import com.ninezero.presentation.component.bottomsheet.ActionBottomSheet
+import com.ninezero.presentation.component.bottomsheet.LeaveRoomBottomSheet
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -194,7 +195,7 @@ fun MessageScreen(
     }
 
     state.leaveRoomBottomSheet?.let { roomId ->
-        ActionBottomSheet(
+        LeaveRoomBottomSheet(
             showBottomSheet = true,
             onDismiss = { viewModel.hideLeaveRoomBottomSheet() },
             onLeave = {

@@ -21,13 +21,14 @@ import com.ninezero.presentation.component.DefaultButton
 import com.ninezero.presentation.component.SNSSurface
 import kotlinx.coroutines.launch
 import com.ninezero.presentation.R
+import com.ninezero.presentation.component.DefaultAccentButton
 import com.ninezero.presentation.theme.SNSTheme
 
 @Composable
 fun ActionBottomSheet(
     showBottomSheet: Boolean,
     onDismiss: () -> Unit,
-    onLeave: () -> Unit
+    content: @Composable () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
@@ -57,14 +58,47 @@ fun ActionBottomSheet(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    DefaultButton(
-                        text = stringResource(R.string.leave_room),
-                        onClick = onLeave,
-                        icon = R.drawable.ic_leave_room
-                    )
+                    content()
                 }
             }
         }
+    }
+}
+
+@Composable
+fun LeaveRoomBottomSheet(
+    showBottomSheet: Boolean,
+    onDismiss: () -> Unit,
+    onLeave: () -> Unit
+) {
+    ActionBottomSheet(
+        showBottomSheet = showBottomSheet,
+        onDismiss = onDismiss
+    ) {
+        DefaultButton(
+            text = stringResource(R.string.leave_room),
+            onClick = onLeave,
+            icon = R.drawable.ic_leave_room
+        )
+    }
+}
+
+@Composable
+fun DeleteNotificationBottomSheet(
+    showBottomSheet: Boolean,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ActionBottomSheet(
+        showBottomSheet = showBottomSheet,
+        onDismiss = onDismiss
+    ) {
+        DefaultAccentButton(
+            text = stringResource(R.string.delete_notification),
+            onClick = onDelete,
+            icon = R.drawable.ic_delete,
+            contentColor = MaterialTheme.colorScheme.error
+        )
     }
 }
 
@@ -88,6 +122,12 @@ private fun ActionBottomSheetPreview() {
                         text = stringResource(R.string.leave_room),
                         onClick = { },
                         icon = R.drawable.ic_leave_room
+                    )
+                    DefaultAccentButton(
+                        text = stringResource(R.string.delete_notification),
+                        onClick = { },
+                        icon = R.drawable.ic_delete,
+                        contentColor = MaterialTheme.colorScheme.error
                     )
                 }
             }

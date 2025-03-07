@@ -3,7 +3,7 @@ package com.ninezero.presentation.auth.signup
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import com.ninezero.domain.model.ApiResult
-import com.ninezero.domain.usecase.UserUseCase
+import com.ninezero.domain.usecase.AuthUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.orbitmvi.orbit.Container
 import org.orbitmvi.orbit.ContainerHost
@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SignUpViewModel @Inject constructor(
-    private val userUseCase: UserUseCase
+    private val authUseCase: AuthUseCase
 ): ViewModel(), ContainerHost<SignUpState, SignUpSideEffect> {
     override val container: Container<SignUpState, SignUpSideEffect> = container(initialState = SignUpState())
 
@@ -83,7 +83,7 @@ class SignUpViewModel @Inject constructor(
 
         reduce { state.copy(isLoading = true) }
 
-        when (val result = userUseCase.signUp(
+        when (val result = authUseCase.signUp(
             id = state.id,
             userName = state.username,
             password = state.password

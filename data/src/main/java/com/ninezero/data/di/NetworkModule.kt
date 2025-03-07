@@ -2,6 +2,7 @@ package com.ninezero.data.di
 
 import com.ninezero.data.ktor.ChatService
 import com.ninezero.data.ktor.FileService
+import com.ninezero.data.ktor.NotificationService
 import com.ninezero.data.ktor.PostService
 import com.ninezero.data.ktor.TokenInterceptor
 import com.ninezero.data.ktor.UserService
@@ -159,5 +160,11 @@ class NetworkModule {
     @Singleton
     fun provideChatService(client: HttpClient): ChatService {
         return ChatService(client)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationService(client: HttpClient): NotificationService {
+        return NotificationService(client)
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,19 +28,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -63,10 +62,12 @@ import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.AppendError
+import com.ninezero.presentation.component.EmptyFeedScreen
 import com.ninezero.presentation.component.EmptySearchScreen
 import com.ninezero.presentation.component.RecentSearchCard
 import com.ninezero.presentation.component.UserSearchResultCard
 import com.ninezero.presentation.component.bounceClick
+import kotlinx.coroutines.delay
 
 @Composable
 fun ExploreScreen(
@@ -96,7 +97,16 @@ fun ExploreScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                })
+            }
+    ) {
         AnimatedContent(
             targetState = isSearchMode,
             transitionSpec = {
@@ -113,8 +123,13 @@ fun ExploreScreen(
                 SearchScreen(
                     state = searchState,
                     onUserClick = { userId ->
-                        searchViewModel.saveRecentSearch(userId)
-                        onNavigateToUser(userId)
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        scope.launch {
+                            delay(100)
+                            searchViewModel.saveRecentSearch(userId)
+                            onNavigateToUser(userId)
+                        }
                     },
                     onSearchItemDelete = searchViewModel::deleteRecentSearch,
                     onClearSearchHistory = searchViewModel::clearRecentSearch,
@@ -133,95 +148,99 @@ fun ExploreScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 color = MaterialTheme.colorScheme.surface
                             ) {
-                                LazyVerticalGrid(
-                                    modifier = Modifier.fillMaxSize(),
-                                    columns = GridCells.Fixed(3),
-                                    horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
-                                    verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
-                                    contentPadding = PaddingValues(GRID_SPACING.dp)
-                                ) {
-                                    items(
-                                        count = posts.itemCount,
-                                        key = posts.itemKey { it.id }
-                                    ) { index ->
-                                        posts[index]?.let { post ->
-                                            if (post.images.isNotEmpty()) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .bounceClick()
-                                                        .clickable { /* 상세 페이지 */ }
-                                                ) {
-                                                    key(post.images.first()) {
-                                                        AsyncImage(
-                                                            model = ImageRequest
-                                                                .Builder(LocalContext.current)
-                                                                .data(post.images.first())
-                                                                .crossfade(true)
-                                                                .build(),
-                                                            contentDescription = null,
-                                                            contentScale = ContentScale.Crop,
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .aspectRatio(1f)
-                                                        )
-                                                    }
-
-                                                    if (post.images.size > 1) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .padding(4.dp)
-                                                                .clip(RoundedCornerShape(6.dp))
-                                                                .align(Alignment.TopEnd),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.ic_multiple),
+                                if (posts.itemCount == 0 && posts.loadState.refresh is LoadState.NotLoading) {
+                                    EmptyFeedScreen()
+                                } else {
+                                    LazyVerticalGrid(
+                                        modifier = Modifier.fillMaxSize(),
+                                        columns = GridCells.Fixed(3),
+                                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
+                                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
+                                        contentPadding = PaddingValues(GRID_SPACING.dp)
+                                    ) {
+                                        items(
+                                            count = posts.itemCount,
+                                            key = posts.itemKey { it.id }
+                                        ) { index ->
+                                            posts[index]?.let { post ->
+                                                if (post.images.isNotEmpty()) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .bounceClick()
+                                                            .clickable { /* 상세 페이지 */ }
+                                                    ) {
+                                                        key(post.images.first()) {
+                                                            AsyncImage(
+                                                                model = ImageRequest
+                                                                    .Builder(LocalContext.current)
+                                                                    .data(post.images.first())
+                                                                    .crossfade(true)
+                                                                    .build(),
                                                                 contentDescription = null,
-                                                                tint = Color.Black.copy(alpha = 0.6f),
+                                                                contentScale = ContentScale.Crop,
                                                                 modifier = Modifier
-                                                                    .scale(1.2f)
-                                                                    .blur(6.dp)
+                                                                    .fillMaxWidth()
+                                                                    .aspectRatio(1f)
                                                             )
+                                                        }
 
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.ic_multiple),
-                                                                contentDescription = null,
-                                                                tint = Color.White.copy(alpha = 0.8f)
-                                                            )
+                                                        if (post.images.size > 1) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .padding(4.dp)
+                                                                    .clip(RoundedCornerShape(6.dp))
+                                                                    .align(Alignment.TopEnd),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(R.drawable.ic_multiple),
+                                                                    contentDescription = null,
+                                                                    tint = Color.Black.copy(alpha = 0.6f),
+                                                                    modifier = Modifier
+                                                                        .scale(1.2f)
+                                                                        .blur(6.dp)
+                                                                )
+
+                                                                Icon(
+                                                                    painter = painterResource(R.drawable.ic_multiple),
+                                                                    contentDescription = null,
+                                                                    tint = Color.White.copy(alpha = 0.8f)
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    when (posts.loadState.append) {
-                                        is LoadState.Loading -> {
-                                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(vertical = 16.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    LoadingProgress()
+                                        when (posts.loadState.append) {
+                                            is LoadState.Loading -> {
+                                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(vertical = 16.dp),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        LoadingProgress()
+                                                    }
                                                 }
                                             }
-                                        }
-                                        is LoadState.Error -> {
-                                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(vertical = 16.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    AppendError(onRetry = { posts.retry() })
+                                            is LoadState.Error -> {
+                                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(vertical = 16.dp),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        AppendError(onRetry = { posts.retry() })
+                                                    }
                                                 }
                                             }
+                                            else -> {}
                                         }
-                                        else -> {}
                                     }
                                 }
                             }
@@ -242,8 +261,19 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val searchResults = state.searchResults.collectAsLazyPagingItems()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                })
+            }
+    ) {
         if (state.searchQuery.isEmpty()) {
             RecentSearchesSection(
                 recentSearches = state.recentSearches,
@@ -256,10 +286,13 @@ fun SearchScreen(
                 state.isLoading -> {
                     LoadingProgress()
                 }
+                state.isError -> {
+                    LoadingProgress()
+                }
                 searchResults.itemCount > 0 -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(

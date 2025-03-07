@@ -45,6 +45,7 @@ import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSIconButton
 import com.ninezero.presentation.message.MessageScreen
+import com.ninezero.presentation.notification.NotificationViewModel
 import com.ninezero.presentation.search.ExploreScreen
 import com.ninezero.presentation.search.SearchViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -54,12 +55,16 @@ import org.orbitmvi.orbit.compose.collectAsState
 
 @Composable
 fun MainScreen(
+    deepLink: Uri? = null,
+    chatNotificationData: ChatNotificationData? = null,
     viewModel: MainViewModel = hiltViewModel(),
     onNavigateToPost: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
     MainNavHost(
+        deepLink = deepLink,
+        chatNotificationData = chatNotificationData,
         viewModel = viewModel,
         onNavigateToPost = onNavigateToPost,
         onNavigateToSettings = onNavigateToSettings,
@@ -70,11 +75,14 @@ fun MainScreen(
 @Composable
 fun MainContent(
     viewModel: MainViewModel,
+    //notificationUseCase: NotificationUseCase = hiltViewModel<NotificationViewModel>().notificationUseCase,
     onNavigateToPost: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToUser: (Long) -> Unit,
-    onNavigateToChat: (otherUserId: Long, roomId: String?, otherUserLoginId: String, otherUserName: String, otherUserProfilePath: String?, myUserId: Long) -> Unit
+    onNavigateToNotification: () -> Unit,
+    onNavigateToChat: (otherUserId: Long, roomId: String?, otherUserLoginId: String, otherUserName: String, otherUserProfilePath: String?, myUserId: Long) -> Unit,
+    onNavigateToPostDetail : (userId: Long, postId: Long) -> Unit
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -85,6 +93,9 @@ fun MainContent(
     val searchViewModel: SearchViewModel = hiltViewModel()
     val isSearchMode by searchViewModel.isSearchMode.collectAsState()
     val searchState by searchViewModel.collectAsState()
+
+    val notificationViewModel: NotificationViewModel = hiltViewModel()
+    val hasUnreadNotifications by notificationViewModel.hasUnreadNotifications.collectAsState()
 
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -171,7 +182,15 @@ fun MainContent(
         focusRequester = currentScreenFocusRequester,
         snackbarHostState = snackbarHostState,
         actions = {
-            if (currentRoute == MainRoute.BottomNavItem.Profile.route) {
+            if (currentRoute == MainRoute.BottomNavItem.Feed.route) {
+                SNSIconButton(
+                    onClick = onNavigateToNotification,
+                    drawableId = R.drawable.ic_notification,
+                    contentDescription = "notifications",
+                    hasBadge = hasUnreadNotifications,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+            } else if (currentRoute == MainRoute.BottomNavItem.Profile.route) {
                 SNSIconButton(
                     onClick = onNavigateToSettings,
                     drawableId = R.drawable.ic_settings,
@@ -226,7 +245,8 @@ fun MainContent(
                 ProfileScreen(
                     snackbarHostState = snackbarHostState,
                     onProfileImageChange = viewModel::load,
-                    onNavigateToUser = onNavigateToUser
+                    onNavigateToUser = onNavigateToUser,
+                    onNavigateToPostDetail = onNavigateToPostDetail
                 )
             }
         }

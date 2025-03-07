@@ -11,9 +11,13 @@ import com.ninezero.domain.usecase.ChatUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
@@ -23,6 +27,7 @@ import org.orbitmvi.orbit.viewmodel.container
 import timber.log.Timber
 import javax.inject.Inject
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatUseCase: ChatUseCase,
@@ -40,6 +45,10 @@ class ChatViewModel @Inject constructor(
     private val messageScope = viewModelScope.plus(Default)
     private val pageSize = 30
 
+    private var networkObserverJob: Job? = null
+    private var lastNetworkConnectAttempt = 0L
+    private val networkConnectCooldown = 10000L
+
     override val container: Container<ChatState, ChatSideEffect> = container(
         ChatState(
             myUserId = myUserId,
@@ -54,12 +63,35 @@ class ChatViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            networkRepository.observeNetworkConnection()
-                .collect { isOnline ->
-                    if (isOnline && !isInitialLoad) {
-                        initializeChat()
+            networkObserverJob?.cancel()
+            networkObserverJob = viewModelScope.launch {
+                networkRepository.observeNetworkConnection()
+                    .distinctUntilChanged() // 중복 이벤트 필터링
+                    .sample(1000) // 짧은 시간 내의 변경 필터링
+                    .collect { isOnline ->
+                        if (isOnline && !isInitialLoad) {
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastNetworkConnectAttempt > networkConnectCooldown) {
+                                lastNetworkConnectAttempt = currentTime
+                                Timber.d("네트워크 연결 감지됨, 채팅 초기화 시도")
+
+                                chatUseCase.resetReconnectAttempts()
+
+                                viewModelScope.launch {
+                                    try {
+                                        initializeChat()
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "네트워크 연결 후 초기화 실패")
+                                    }
+                                }
+                            } else {
+                                Timber.d("네트워크 연결 감지됨, 쿨다운 중 (${networkConnectCooldown - (currentTime - lastNetworkConnectAttempt)}ms 남음)")
+                            }
+                        } else if (!isOnline) {
+                            Timber.d("네트워크 연결 끊김")
+                        }
                     }
-                }
+            }
         }
 
         viewModelScope.launch {
@@ -78,7 +110,8 @@ class ChatViewModel @Inject constructor(
                     chatUseCase.connectWebSocket()
                 } catch (e: Exception) {
                     reduce { state.copy(isLoading = false, isError = true) }
-                    Timber.e(e)
+                    Timber.e(e, "WebSocket 연결 실패")
+                    postSideEffect(ChatSideEffect.ShowSnackbar("채팅 연결 실패"))
                 }
             }
 
@@ -203,7 +236,9 @@ class ChatViewModel @Inject constructor(
                             reduce { state.copy(roomId = newRoomId) }
                         }
                     }
-                    is ApiResult.Error -> postSideEffect(ChatSideEffect.ShowSnackbar(result.message))
+                    is ApiResult.Error -> {
+                        postSideEffect(ChatSideEffect.ShowSnackbar(result.message))
+                    }
                 }
             }
 
@@ -220,7 +255,9 @@ class ChatViewModel @Inject constructor(
                             loadInitialMessages(newRoomId)
                         }
                     }
-                    is ApiResult.Error -> postSideEffect(ChatSideEffect.ShowSnackbar(result.message))
+                    is ApiResult.Error -> {
+                        postSideEffect(ChatSideEffect.ShowSnackbar(result.message))
+                    }
                 }
             } else {
                 delay(100)
@@ -250,7 +287,7 @@ class ChatViewModel @Inject constructor(
 
 @Immutable
 data class ChatState(
-    val myUserId: Long,
+    val myUserId: Long = -1L,
     val otherUserLoginId: String,
     val otherUserName: String,
     val otherUserProfilePath: String?,

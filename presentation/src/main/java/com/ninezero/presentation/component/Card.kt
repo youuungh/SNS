@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,10 +25,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,7 +43,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.BasicRichText
@@ -294,6 +291,7 @@ fun UserCard(
     Surface(
         modifier = modifier
             .width(150.dp)
+            .clip(MaterialTheme.shapes.extraSmall)
             .clickable { onUserClick() },
         shape = MaterialTheme.shapes.extraSmall,
         color = MaterialTheme.colorScheme.surface,
@@ -349,13 +347,14 @@ fun UserSearchResultCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
         modifier = modifier
             .fillMaxWidth()
             .bounceClick()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -392,43 +391,48 @@ fun RecentSearchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
         modifier = modifier
             .width(100.dp)
             .aspectRatio(1f)
             .bounceClick()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
     ) {
-        SNSIconButton(
-            onClick = onDelete,
-            imageVector = Icons.Rounded.Close,
-            contentDescription = "delete",
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .size(20.dp)
-        )
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
         ) {
-            SNSProfileImage(
-                imageUrl = search.searchedUserProfileImagePath,
-                modifier = Modifier.size(48.dp)
+            SNSIconButton(
+                onClick = onDelete,
+                imageVector = Icons.Rounded.Close,
+                contentDescription = "delete",
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(20.dp)
             )
-            Text(
-                text = search.searchedUserName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SNSProfileImage(
+                    imageUrl = search.searchedUserProfileImagePath,
+                    modifier = Modifier.size(48.dp)
+                )
+                Text(
+                    text = search.searchedUserName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }

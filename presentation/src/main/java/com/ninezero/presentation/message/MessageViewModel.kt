@@ -12,10 +12,13 @@ import com.ninezero.domain.usecase.UserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
@@ -25,6 +28,7 @@ import org.orbitmvi.orbit.viewmodel.container
 import timber.log.Timber
 import javax.inject.Inject
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class MessageViewModel @Inject constructor(
     private val chatUseCase: ChatUseCase,
@@ -41,14 +45,42 @@ class MessageViewModel @Inject constructor(
     private val messageScope = viewModelScope.plus(Default)
     private val pageSize = 20
 
+    private var networkObserverJob: Job? = null
+    private var lastNetworkConnectAttempt = 0L
+    private val networkConnectCooldown = 10000L
+
     init {
         viewModelScope.launch {
-            networkRepository.observeNetworkConnection()
-                .collect { isOnline ->
-                    if (isOnline && !isInitialLoad) {
-                        load()
+            networkObserverJob?.cancel()
+            networkObserverJob = viewModelScope.launch {
+                networkRepository.observeNetworkConnection()
+                    .distinctUntilChanged()
+                    .sample(1000)
+                    .collect { isOnline ->
+                        if (isOnline && !isInitialLoad) {
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastNetworkConnectAttempt > networkConnectCooldown) {
+                                lastNetworkConnectAttempt = currentTime
+                                Timber.d("네트워크 연결 감지됨, 메시지 화면 초기화 시도")
+
+                                chatUseCase.resetReconnectAttempts()
+
+                                viewModelScope.launch {
+                                    try {
+                                        load()
+                                        initializeWebSocket()
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "네트워크 연결 후 초기화 실패")
+                                    }
+                                }
+                            } else {
+                                Timber.d("네트워크 연결 감지됨, 쿨다운 중 (${networkConnectCooldown - (currentTime - lastNetworkConnectAttempt)}ms 남음)")
+                            }
+                        } else if (!isOnline) {
+                            Timber.d("네트워크 연결 끊김")
+                        }
                     }
-                }
+            }
         }
 
         viewModelScope.launch {
@@ -65,7 +97,8 @@ class MessageViewModel @Inject constructor(
             try {
                 chatUseCase.connectWebSocket()
             } catch (e: Exception) {
-                Timber.e(e)
+                Timber.e(e, "WebSocket 연결 실패")
+                postSideEffect(MessageSideEffect.ShowSnackbar("채팅 연결 실패"))
             }
         }
 
@@ -109,31 +142,18 @@ class MessageViewModel @Inject constructor(
                 )
             }
 
-            when (val userResult = userUseCase.getMyUser()) {
-                is ApiResult.Success -> {
-                    reduce { state.copy(myUserId = userResult.data.id) }
+            val myUserId = userUseCase.getMyUserId()
+            reduce { state.copy(myUserId = myUserId) }
 
-                    when (val result = chatUseCase.getRooms(1, pageSize)) {
-                        is ApiResult.Success -> {
-                            reduce {
-                                state.copy(
-                                    rooms = result.data,
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    hasMoreRooms = result.data.size >= pageSize
-                                )
-                            }
-                        }
-                        is ApiResult.Error -> {
-                            reduce {
-                                state.copy(
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    isError = true
-                                )
-                            }
-                            postSideEffect(MessageSideEffect.ShowSnackbar(result.message))
-                        }
+            when (val result = chatUseCase.getRooms(1, pageSize)) {
+                is ApiResult.Success -> {
+                    reduce {
+                        state.copy(
+                            rooms = result.data,
+                            isLoading = false,
+                            isRefreshing = false,
+                            hasMoreRooms = result.data.size >= pageSize
+                        )
                     }
                 }
                 is ApiResult.Error -> {
@@ -144,7 +164,7 @@ class MessageViewModel @Inject constructor(
                             isError = true
                         )
                     }
-                    postSideEffect(MessageSideEffect.ShowSnackbar(userResult.message))
+                    postSideEffect(MessageSideEffect.ShowSnackbar(result.message))
                 }
             }
         } catch (e: Exception) {
@@ -279,17 +299,29 @@ class MessageViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         messageCollectJob?.cancel()
+        networkObserverJob?.cancel()
     }
 
     fun onResume() {
-        initializeWebSocket()
-        load()
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastNetworkConnectAttempt > networkConnectCooldown) {
+            lastNetworkConnectAttempt = currentTime
+            Timber.d("화면 진입, 채팅 초기화 시도")
+
+            viewModelScope.launch {
+                chatUseCase.resetReconnectAttempts()
+                initializeWebSocket()
+                load()
+            }
+        } else {
+            Timber.d("화면 진입, 쿨다운 중 (${networkConnectCooldown - (currentTime - lastNetworkConnectAttempt)}ms 남음)")
+        }
     }
 }
 
 @Immutable
 data class MessageState(
-    val myUserId: Long = -1,
+    val myUserId: Long = -1L,
     val rooms: List<ChatRoom> = emptyList(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,

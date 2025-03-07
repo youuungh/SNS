@@ -463,26 +463,43 @@ fun SNSIconButton(
     modifier: Modifier = Modifier,
     @DrawableRes drawableId: Int? = null,
     imageVector: ImageVector? = null,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    hasBadge: Boolean = false,
+    badgeColor: Color = MaterialTheme.colorScheme.error,
 ) {
-    FilledIconButton(
-        onClick = onClick,
-        modifier = modifier.size(32.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
+    Box(
+        modifier = modifier
     ) {
-        when {
-            drawableId != null -> Icon(
-                painter = painterResource(id = drawableId),
-                contentDescription = contentDescription
+        FilledIconButton(
+            onClick = onClick,
+            modifier = Modifier.size(32.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface
             )
-            imageVector != null -> Icon(
-                imageVector = imageVector,
-                contentDescription = contentDescription
-            )
+        ) {
+            Box {
+                when {
+                    drawableId != null -> Icon(
+                        painter = painterResource(id = drawableId),
+                        contentDescription = contentDescription
+                    )
+                    imageVector != null -> Icon(
+                        imageVector = imageVector,
+                        contentDescription = contentDescription
+                    )
+                }
+
+                if (hasBadge) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(badgeColor, CircleShape)
+                            .align(Alignment.TopEnd)
+                    )
+                }
+            }
         }
     }
 }
@@ -900,10 +917,31 @@ private fun SNSButtonPreview() {
                     isEnabled = true,
                     onClick = {}
                 )
+            }
+        }
+    }
+}
+
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SNSButtonPreview2() {
+    SNSTheme {
+        Surface {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Row {
                     SNSIconButton(
                         onClick = {},
                         imageVector = Icons.Rounded.Close,
+                        contentDescription = "close"
+                    )
+                    SNSIconButton(
+                        onClick = {},
+                        drawableId = R.drawable.ic_notification,
+                        hasBadge = true,
                         contentDescription = "close"
                     )
                     SNSIconToggleButton(

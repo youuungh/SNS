@@ -41,6 +41,7 @@ import com.ninezero.presentation.component.AppendError
 import com.ninezero.presentation.component.LoadingProgress
 import com.ninezero.presentation.component.SNSCommentInputField
 import com.ninezero.presentation.component.ShimmerCommentCards
+import kotlinx.coroutines.delay
 
 @Composable
 fun CommentsBottomSheet(
@@ -53,6 +54,7 @@ fun CommentsBottomSheet(
     expandedCommentIds: Map<Long, Boolean>,
     loadingReplyIds: Set<Long>,
     replies: Map<Long, List<Comment>>,
+    targetCommentId: Long? = null,
     onDismiss: () -> Unit,
     onCommentSend: (String) -> Unit,
     onReplyClick: (Comment) -> Unit,
@@ -74,6 +76,52 @@ fun CommentsBottomSheet(
             }
         }
     )
+
+    LaunchedEffect(comments.loadState.refresh, targetCommentId) {
+        if (comments.loadState.refresh is LoadState.NotLoading && targetCommentId != null) {
+            delay(500) // 댓글 로드 후 약간의 지연 필요
+
+            // 먼저 메인 댓글 목록에서 대상 댓글 찾기
+            var targetIndex = -1
+            for (i in 0 until comments.itemCount) {
+                comments[i]?.let { comment ->
+                    if (comment.id == targetCommentId) {
+                        targetIndex = i
+                        return@let
+                    }
+                }
+            }
+
+            if (targetIndex >= 0) {
+                // 댓글 찾음, 해당 위치로 스크롤
+                listState.animateScrollToItem(targetIndex)
+            } else {
+                // 대댓글(답글)인 경우 부모 댓글 찾기
+                var foundParent = false
+                for (i in 0 until comments.itemCount) {
+                    if (foundParent) break
+
+                    comments[i]?.let { comment ->
+                        if (comment.replyCount > 0) {
+                            // 이 댓글의 답글 목록에 있는지 확인하기 위해 펼치기
+                            onToggleReplies(comment.id)
+
+                            // 펼침 상태 확인
+                            delay(300) // 답글 로드 대기
+
+                            // 이 댓글의 답글 목록에 대상 댓글 있는지 확인
+                            val repliesList = replies[comment.id] ?: emptyList()
+                            if (repliesList.any { it.id == targetCommentId }) {
+                                // 부모 댓글로 스크롤
+                                listState.animateScrollToItem(i)
+                                foundParent = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     if (showBottomSheet) {
         ModalBottomSheet(
