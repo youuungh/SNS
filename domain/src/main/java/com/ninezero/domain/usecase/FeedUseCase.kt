@@ -17,7 +17,14 @@ interface FeedUseCase {
     // comment
     suspend fun getComments(postId: Long): ApiResult<Flow<PagingData<Comment>>>
     suspend fun getReplies(postId: Long, parentId: Long): ApiResult<List<Comment>>
-    suspend fun addComment(postId: Long, text: String, parentId: Long?): ApiResult<Long>
+    suspend fun addComment(
+        postId: Long,
+        text: String,
+        parentId: Long?,
+        mentionedUserIds: List<Long>?,
+        replyToCommentId: Long?
+    ): ApiResult<Long>
+
     suspend fun deleteComment(postId: Long, commentId: Long): ApiResult<Long>
 
     // like & save

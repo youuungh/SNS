@@ -95,7 +95,7 @@ class MainActivity : BaseActivity() {
         Timber.d("FCM 브로드캐스트 처리: $notificationType")
 
         when (notificationType) {
-            "like", "comment" -> handlePostNotification(intent, notificationType)
+            "like", "comment", "reply" -> handlePostNotification(intent, notificationType)
             "follow" -> handleFollowNotification(intent)
             "chat" -> handleChatNotification(intent)
         }
@@ -115,7 +115,7 @@ class MainActivity : BaseActivity() {
 
         val commentId = intent.getLongExtra("notification_comment_id", -1L)
         val commentParam = if (commentId != -1L) "&commentId=$commentId" else ""
-        val showComments = type == "comment"
+        val showComments = type == "comment" || type == "reply"
 
         deepLink = Uri.parse("ninezero://post_detail/$myUserId/$boardId?showComments=$showComments$commentParam")
         chatNotificationData = null

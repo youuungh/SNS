@@ -10,7 +10,10 @@ data class CommentDto(
     val parentId: Long?,
     val parentUserName: String?,
     val depth: Int,
+    val mentionedUserIds: List<Long>?,
     val replyCount: Int,
+    val replyToCommentId: Long?,
+    val replyToUserName: String?,
     val createdAt: String,
     val createUserId: Long,
     val createUserName: String,
@@ -27,6 +30,9 @@ fun CommentDto.toDomain() : Comment {
         parentId = parentId,
         parentUserName = parentUserName,
         depth = depth,
-        replyCount = replyCount
+        replyCount = replyCount,
+        mentionedUserIds = mentionedUserIds,
+        replyToCommentId = replyToCommentId,
+        replyToUserName = replyToUserName
     )
 }

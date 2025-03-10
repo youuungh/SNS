@@ -256,7 +256,7 @@ fun SearchTextField(
 fun SNSCommentInputField(
     @StringRes hint: Int,
     replyToComment: Comment? = null,
-    onSend: (String) -> Unit,
+    onSend: (String, List<Long>?, Long?) -> Unit,
     onCancelReply: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -290,7 +290,7 @@ fun SNSCommentInputField(
                             Text(
                                 text = stringResource(
                                     id = R.string.replying_to_user,
-                                    comment.userName
+                                    comment.userName.replaceFirstChar { it.uppercase() }
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -317,6 +317,18 @@ fun SNSCommentInputField(
             val focusRequester = remember { FocusRequester() }
 
             var text by remember { mutableStateOf("") }
+
+            val mentionedUserIds = remember(replyToComment) {
+                mutableStateListOf<Long>().apply {
+                    replyToComment?.userId?.let { add(it) }
+                }
+            }
+            val replyToCommentId = remember(replyToComment) {
+                when {
+                    replyToComment?.depth == 1 -> replyToComment.id
+                    else -> null
+                }
+            }
 
             val backgroundColor = if (isDarkTheme) {
                 snsCommentDarkBackground
@@ -356,9 +368,9 @@ fun SNSCommentInputField(
                         .padding(horizontal = 24.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (replyToComment != null) {
+                    replyToComment?.let {
                         Text(
-                            text = "@${replyToComment.userName} ",
+                            text = "@${replyToComment.userName.replaceFirstChar { it.uppercase() }} ",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 lineHeight = 44.sp,
                                 baselineShift = BaselineShift.None
@@ -412,8 +424,10 @@ fun SNSCommentInputField(
                         ) {
                             focusManager.clearFocus()
                             keyboardController?.hide()
-                            onSend(text)
+                            val finalMentionedUserIds = if (mentionedUserIds.isEmpty()) null else mentionedUserIds.toList()
+                            onSend(text, finalMentionedUserIds, replyToCommentId)
                             text = ""
+                            mentionedUserIds.clear()
                         }
                 )
             }
@@ -679,13 +693,16 @@ private fun SNSCommentInputFieldPreview() {
                 parentId = null,
                 parentUserName = null,
                 depth = 0,
-                replyCount = 0
+                replyCount = 0,
+                mentionedUserIds = null,
+                replyToCommentId = null,
+                replyToUserName = null
             )
 
             SNSCommentInputField(
                 hint = R.string.label_input_comment,
                 replyToComment = sampleComment,
-                onSend = {},
+                onSend = { _, _, _ -> },
                 onCancelReply = {}
             )
         }

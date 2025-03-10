@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -56,15 +58,17 @@ fun CommentsBottomSheet(
     replies: Map<Long, List<Comment>>,
     targetCommentId: Long? = null,
     onDismiss: () -> Unit,
-    onCommentSend: (String) -> Unit,
+    onCommentSend: (String, List<Long>?, Long?) -> Unit,
     onReplyClick: (Comment) -> Unit,
     onCancelReply: () -> Unit,
     onToggleReplies: (Long) -> Unit,
     onDeleteComment: (Comment) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     var isClosing by remember { mutableStateOf(false) }
+
+    val currentExpandedIds = remember { mutableStateMapOf<Long, Boolean>() }
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
@@ -77,11 +81,20 @@ fun CommentsBottomSheet(
         }
     )
 
+    LaunchedEffect(expandedCommentIds) {
+        expandedCommentIds.forEach { (id, expanded) ->
+            if (expanded) {
+                currentExpandedIds[id] = true
+            } else {
+                currentExpandedIds.remove(id)
+            }
+        }
+    }
+
     LaunchedEffect(comments.loadState.refresh, targetCommentId) {
         if (comments.loadState.refresh is LoadState.NotLoading && targetCommentId != null) {
-            delay(500) // 댓글 로드 후 약간의 지연 필요
+            delay(600)
 
-            // 먼저 메인 댓글 목록에서 대상 댓글 찾기
             var targetIndex = -1
             for (i in 0 until comments.itemCount) {
                 comments[i]?.let { comment ->
@@ -93,28 +106,45 @@ fun CommentsBottomSheet(
             }
 
             if (targetIndex >= 0) {
-                // 댓글 찾음, 해당 위치로 스크롤
                 listState.animateScrollToItem(targetIndex)
             } else {
-                // 대댓글(답글)인 경우 부모 댓글 찾기
-                var foundParent = false
-                for (i in 0 until comments.itemCount) {
-                    if (foundParent) break
+                // 대댓글인 경우 부모 댓글 찾기
+                var foundInReplies = false
+                for ((parentId, repliesList) in replies) {
+                    if (repliesList.any { it.id == targetCommentId }) {
+                        if (expandedCommentIds[parentId] != true) {
+                            onToggleReplies(parentId)
+                        }
 
-                    comments[i]?.let { comment ->
-                        if (comment.replyCount > 0) {
-                            // 이 댓글의 답글 목록에 있는지 확인하기 위해 펼치기
-                            onToggleReplies(comment.id)
+                        for (i in 0 until comments.itemCount) {
+                            comments[i]?.let { comment ->
+                                if (comment.id == parentId) {
+                                    listState.animateScrollToItem(i)
+                                    foundInReplies = true
+                                    return@let
+                                }
+                            }
+                        }
+                        break
+                    }
+                }
 
-                            // 펼침 상태 확인
-                            delay(300) // 답글 로드 대기
+                if (!foundInReplies) {
+                    var foundParent = false
+                    for (i in 0 until comments.itemCount) {
+                        if (foundParent) break
 
-                            // 이 댓글의 답글 목록에 대상 댓글 있는지 확인
-                            val repliesList = replies[comment.id] ?: emptyList()
-                            if (repliesList.any { it.id == targetCommentId }) {
-                                // 부모 댓글로 스크롤
-                                listState.animateScrollToItem(i)
+                        comments[i]?.let { comment ->
+                            if (comment.replyCount > 0 && !replies.containsKey(comment.id)) {
+                                onToggleReplies(comment.id)
                                 foundParent = true
+
+                                scope.launch {
+                                    delay(500)
+                                    if (replies[comment.id]?.any { it.id == targetCommentId } == true) {
+                                        listState.animateScrollToItem(i)
+                                    }
+                                }
                             }
                         }
                     }
@@ -140,40 +170,47 @@ fun CommentsBottomSheet(
             dragHandle = null,
             shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
             containerColor = MaterialTheme.colorScheme.surface,
-            contentWindowInsets = { WindowInsets(0) }
+            contentWindowInsets = { WindowInsets(0) },
+            modifier = Modifier.statusBarsPadding()
         ) {
-            Column(modifier = Modifier.fillMaxHeight(0.8f)) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(R.string.comment),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    },
-                    navigationIcon = {
-                        SNSIconButton(
-                            onClick = {
-                                scope.launch {
-                                    isClosing = true
-                                    try {
-                                        sheetState.hide()
-                                    } finally {
-                                        onDismiss()
-                                        isClosing = false
+            Column(modifier = Modifier.fillMaxSize()) {
+                SNSSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = 1.dp
+                ) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(R.string.comment),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        navigationIcon = {
+                            SNSIconButton(
+                                onClick = {
+                                    scope.launch {
+                                        isClosing = true
+                                        try {
+                                            sheetState.hide()
+                                        } finally {
+                                            onDismiss()
+                                            isClosing = false
+                                        }
                                     }
-                                }
-                            },
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = "close",
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                    windowInsets = WindowInsets(0)
-                )
+                                },
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "close",
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                        windowInsets = WindowInsets(0)
+                    )
+                }
+
 
                 SNSSurface(modifier = Modifier.weight(1f)) {
                     when (comments.loadState.refresh) {
@@ -207,17 +244,26 @@ fun CommentsBottomSheet(
                                         contentType = { "comment" }
                                     ) { index ->
                                         comments[index]?.let { comment ->
-                                            CommentItem(
-                                                comment = comment,
-                                                isOwner = isOwner,
-                                                myUserId = myUserId,
-                                                isExpanded = expandedCommentIds[comment.id] == true,
-                                                isLoadingReplies = loadingReplyIds.contains(comment.id),
-                                                replies = replies[comment.id] ?: emptyList(),
-                                                onReplyClick = onReplyClick,
-                                                onToggleReplies = onToggleReplies,
-                                                onDeleteComment = onDeleteComment
-                                            )
+                                            key(comment.id) {
+                                                CommentItem(
+                                                    comment = comment,
+                                                    isOwner = isOwner,
+                                                    myUserId = myUserId,
+                                                    isExpanded = currentExpandedIds[comment.id] == true,
+                                                    isLoadingReplies = loadingReplyIds.contains(comment.id),
+                                                    replies = replies[comment.id] ?: emptyList(),
+                                                    onReplyClick = onReplyClick,
+                                                    onToggleReplies = { commentId ->
+                                                        if (currentExpandedIds[commentId] == true) {
+                                                            currentExpandedIds.remove(commentId)
+                                                        } else {
+                                                            currentExpandedIds[commentId] = true
+                                                        }
+                                                        onToggleReplies(commentId)
+                                                    },
+                                                    onDeleteComment = onDeleteComment
+                                                )
+                                            }
                                         }
                                     }
 
@@ -245,13 +291,13 @@ fun CommentsBottomSheet(
                 SNSCommentInputField(
                     hint = R.string.label_input_comment,
                     replyToComment = replyToComment,
-                    onSend = { text ->
-                        onCommentSend(text)
-                        scope.launch {
-                            listState.animateScrollToItem(0)
-                        }
+                    onSend = { text, mentionedUserIds, replyToCommentId ->
+                        onCommentSend(text, mentionedUserIds, replyToCommentId)
                     },
-                    onCancelReply = onCancelReply
+                    onCancelReply = onCancelReply,
+                    modifier = Modifier
+                        .imePadding()
+                        .fillMaxWidth()
                 )
             }
         }
@@ -272,6 +318,9 @@ private fun CommentsBottomSheetContentPreview() {
             parentId = null,
             parentUserName = null,
             depth = 0,
+            mentionedUserIds = null,
+            replyToCommentId = null,
+            replyToUserName = null,
             replyCount = 2,
             isExpanded = true,
             replies = listOf(
@@ -284,7 +333,10 @@ private fun CommentsBottomSheetContentPreview() {
                     parentId = 1L,
                     parentUserName = "UserOne",
                     depth = 1,
-                    replyCount = 0
+                    mentionedUserIds = listOf(1L),
+                    replyCount = 0,
+                    replyToCommentId = 1L,
+                    replyToUserName = "UserOne"
                 ),
                 Comment(
                     id = 3L,
@@ -295,20 +347,43 @@ private fun CommentsBottomSheetContentPreview() {
                     parentId = 1L,
                     parentUserName = "UserOne",
                     depth = 1,
-                    replyCount = 0
+                    mentionedUserIds = listOf(2L),
+                    replyCount = 0,
+                    replyToCommentId = 2L,
+                    replyToUserName = "ReplyUser1"
                 )
             )
         ),
         Comment(
             id = 4L,
-            userId = 1L,
+            userId = 4L,
             text = "두 번째 댓글입니다. 조금 더 긴 댓글을 작성해보았습니다.",
             userName = "UserTwo",
             profileImageUrl = null,
             parentId = null,
             parentUserName = null,
             depth = 0,
-            replyCount = 0
+            mentionedUserIds = null,
+            replyToCommentId = null,
+            replyToUserName = null,
+            replyCount = 1,
+            isExpanded = true,
+            replies = listOf(
+                Comment(
+                    id = 5L,
+                    userId = 1L,
+                    text = "이 댓글에 대한 답변입니다.",
+                    userName = "UserOne",
+                    profileImageUrl = null,
+                    parentId = 4L,
+                    parentUserName = "UserTwo",
+                    depth = 1,
+                    mentionedUserIds = listOf(4L),
+                    replyToCommentId = 4L,
+                    replyToUserName = "UserTwo",
+                    replyCount = 0
+                )
+            )
         )
     )
 
@@ -364,13 +439,13 @@ private fun CommentsBottomSheetContentPreview() {
 
             SNSSurface(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = 1.dp
+                elevation = 8.dp
             ) {
                 SNSCommentInputField(
                     hint = R.string.label_input_comment,
-                    onSend = {},
-                    onCancelReply = {},
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    replyToComment = null,
+                    onSend = { _, _, _ -> },
+                    onCancelReply = {}
                 )
             }
         }

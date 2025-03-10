@@ -99,17 +99,70 @@ fun CommentItem(
 
                         Text(
                             text = buildAnnotatedString {
-                                if (isReply && comment.parentUserName != null) {
-                                    withStyle(
-                                        style = SpanStyle(
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    ) {
-                                        append("@${comment.parentUserName} ")
+                                if (comment.depth == 1) {
+                                    val mentionName = when {
+                                        comment.replyToUserName != null -> comment.replyToUserName
+                                        comment.parentUserName != null -> comment.parentUserName
+                                        else -> null
+                                    }
+
+                                    // 텍스트가 이미 @멘션으로 시작하는지 확인
+                                    mentionName?.let {
+                                        val text = comment.text
+                                        val capitalisedMentionName = mentionName.replaceFirstChar { it.uppercase() }
+                                        val startsWithMention = text.trimStart().startsWith("@$mentionName") ||
+                                                text.trimStart().startsWith("@$capitalisedMentionName")
+
+                                        // 텍스트가 멘션으로 시작하지 않을 경우에만 앞에 추가
+                                        if (!startsWithMention) {
+                                            withStyle(
+                                                style = SpanStyle(
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            ) {
+                                                append("@${capitalisedMentionName} ")
+                                            }
+                                        }
                                     }
                                 }
-                                append(comment.text)
+
+                                // 댓글 텍스트 내의 @멘션 처리
+                                val text = comment.text
+                                if (text.contains("@") && comment.mentionedUserIds != null) {
+                                    // 정규식으로 @username 패턴 찾기
+                                    val mentionPattern = Regex("@(\\w+)")
+                                    val matches = mentionPattern.findAll(text)
+
+                                    var lastIndex = 0
+                                    for (match in matches) {
+                                        // 멘션 앞 텍스트 추가
+                                        append(text.substring(lastIndex, match.range.first))
+
+                                        // 멘션된 사용자명 추출하고 첫 글자 대문자로 변환
+                                        val mentionedName = text.substring(match.range.first + 1, match.range.last + 1)
+                                        val capitalisedName = mentionedName.replaceFirstChar { it.uppercase() }
+
+                                        // 멘션된 사용자 강조
+                                        withStyle(
+                                            style = SpanStyle(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        ) {
+                                            append("@$capitalisedName")
+                                        }
+
+                                        lastIndex = match.range.last + 1
+                                    }
+
+                                    // 나머지 텍스트
+                                    if (lastIndex < text.length) {
+                                        append(text.substring(lastIndex))
+                                    }
+                                } else {
+                                    append(text)
+                                }
                             },
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -127,7 +180,8 @@ fun CommentItem(
                     }
                 }
 
-                if (!isReply) {
+                // 답글 달기 버튼
+                if (myUserId != comment.userId) {
                     Text(
                         text = stringResource(R.string.reply),
                         style = MaterialTheme.typography.labelMedium,
@@ -619,6 +673,7 @@ private fun getNotificationText(notification: Notification): String {
     return when (notification.type) {
         "like" -> "${notification.senderName ?: ""}님이 회원님의 게시물을 좋아합니다."
         "comment" -> notification.body
+        "reply" -> notification.body
         "follow" -> "${notification.senderName ?: ""}님이 회원님을 팔로우하기 시작했습니다."
         "chat" -> "${notification.senderName ?: ""}님이 메시지를 보냈습니다: ${notification.body}"
         else -> notification.body
@@ -656,29 +711,38 @@ private fun CommentItemPreview() {
                     parentId = null,
                     parentUserName = null,
                     depth = 0,
+                    mentionedUserIds = null,
                     replyCount = 2,
+                    replyToCommentId = null,
+                    replyToUserName = null,
                     isExpanded = true,
                     replies = listOf(
                         Comment(
                             id = 2L,
-                            userId = 1L,
+                            userId = 2L,
                             text = "First reply comment",
                             userName = "ReplyUser1",
                             profileImageUrl = null,
                             parentId = 1L,
                             parentUserName = "User",
                             depth = 1,
+                            mentionedUserIds = listOf(1L),
+                            replyToCommentId = 1L,
+                            replyToUserName = "User",
                             replyCount = 0
                         ),
                         Comment(
                             id = 3L,
-                            userId = 1L,
-                            text = "Second reply comment",
+                            userId = 3L,
+                            text = "@ReplyUser1 Second reply comment",
                             userName = "ReplyUser2",
                             profileImageUrl = null,
                             parentId = 1L,
                             parentUserName = "User",
                             depth = 1,
+                            mentionedUserIds = listOf(2L),
+                            replyToCommentId = 2L,
+                            replyToUserName = "ReplyUser1",
                             replyCount = 0
                         )
                     )
@@ -911,24 +975,30 @@ fun CommentWithRepliesPreview() {
     val replies = listOf(
         Comment(
             id = 2L,
-            userId = 1L,
-            text = "첫 번째 답글입니다. 이것은 부모 댓글에 대한 첫 번째 답글입니다.",
+            userId = 2L,
+            text = "첫 번째 답글입니다.",
             userName = "Reply1",
             profileImageUrl = null,
             parentId = 1L,
             parentUserName = "Parent",
             depth = 1,
+            mentionedUserIds = listOf(1L),
+            replyToCommentId = 1L,
+            replyToUserName = "Parent",
             replyCount = 0
         ),
         Comment(
             id = 3L,
-            userId = 1L,
-            text = "두 번째 답글입니다. 이것은 부모 댓글에 대한 두 번째 답글입니다.",
+            userId = 3L,
+            text = "@Reply1 두 번째 답글입니다. 이것은 첫 번째 답글에 대한 답글입니다.",
             userName = "Reply2",
             profileImageUrl = null,
             parentId = 1L,
             parentUserName = "Parent",
             depth = 1,
+            mentionedUserIds = listOf(2L),
+            replyToCommentId = 2L,
+            replyToUserName = "Reply1",
             replyCount = 0
         )
     )
@@ -945,10 +1015,96 @@ fun CommentWithRepliesPreview() {
                     parentId = null,
                     parentUserName = null,
                     depth = 0,
-                    replyCount = 2
+                    mentionedUserIds = null,
+                    replyCount = 2,
+                    replyToCommentId = null,
+                    replyToUserName = null
                 ),
                 isOwner = true,
                 myUserId = 1L,
+                isReply = false,
+                isExpanded = true,
+                isLoadingReplies = false,
+                replies = replies,
+                onReplyClick = {},
+                onToggleReplies = {},
+                onDeleteComment = {},
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun ReplyChainPreview() {
+    val parentComment = Comment(
+        id = 1L,
+        userId = 1L,
+        text = "원본 댓글입니다.",
+        userName = "User1",
+        profileImageUrl = null,
+        parentId = null,
+        parentUserName = null,
+        depth = 0,
+        mentionedUserIds = null,
+        replyCount = 3,
+        replyToCommentId = null,
+        replyToUserName = null
+    )
+
+    val replies = listOf(
+        Comment(
+            id = 2L,
+            userId = 2L,
+            text = "첫 번째 대댓글입니다.",
+            userName = "User2",
+            profileImageUrl = null,
+            parentId = 1L,
+            parentUserName = "User1",
+            depth = 1,
+            mentionedUserIds = listOf(1L),
+            replyToCommentId = 1L,
+            replyToUserName = "User1",
+            replyCount = 0
+        ),
+        Comment(
+            id = 3L,
+            userId = 3L,
+            text = "@User2 두 번째 대댓글입니다. User2님에게 답변합니다.",
+            userName = "User3",
+            profileImageUrl = null,
+            parentId = 1L,
+            parentUserName = "User1",
+            depth = 1,
+            mentionedUserIds = listOf(2L),
+            replyToCommentId = 2L,
+            replyToUserName = "User2",
+            replyCount = 0
+        ),
+        Comment(
+            id = 4L,
+            userId = 4L,
+            text = "@User3 세 번째 대댓글입니다. User3님에게 답변합니다.",
+            userName = "User4",
+            profileImageUrl = null,
+            parentId = 1L,
+            parentUserName = "User1",
+            depth = 1,
+            mentionedUserIds = listOf(3L),
+            replyToCommentId = 3L,
+            replyToUserName = "User3",
+            replyCount = 0
+        )
+    )
+
+    SNSTheme {
+        Surface {
+            CommentItem(
+                comment = parentComment,
+                isOwner = false,
+                myUserId = 5L, // 현재 사용자는 댓글 작성자가 아님
                 isReply = false,
                 isExpanded = true,
                 isLoadingReplies = false,

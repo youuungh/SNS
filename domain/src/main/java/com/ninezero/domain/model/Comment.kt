@@ -9,7 +9,10 @@ data class Comment(
     val parentId: Long?,
     val parentUserName: String?,
     val depth: Int,
+    val mentionedUserIds: List<Long>?,
     val replyCount: Int,
+    val replyToCommentId: Long?,
+    val replyToUserName: String?,
     val isExpanded: Boolean = false,
     val replies: List<Comment> = emptyList()
 )

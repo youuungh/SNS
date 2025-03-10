@@ -248,11 +248,14 @@ fun FeedScreen(
             expandedCommentIds = state.expandedCommentIds,
             loadingReplyIds = state.loadingReplyIds,
             replies = state.replies,
+            targetCommentId = state.targetCommentId,
             onDismiss = {
                 viewModel.hideCommentsSheet()
                 viewModel.setReplyToComment(null)
             },
-            onCommentSend = { text -> viewModel.onCommentSend(post.postId, text) },
+            onCommentSend = { text, mentionedUserIds, replyToCommentId ->
+                viewModel.onCommentSend(post.postId, text, mentionedUserIds, replyToCommentId)
+            },
             onReplyClick = { comment -> viewModel.setReplyToComment(comment) },
             onCancelReply = { viewModel.setReplyToComment(null) },
             onToggleReplies = { commentId -> viewModel.toggleRepliesVisibility(commentId) },

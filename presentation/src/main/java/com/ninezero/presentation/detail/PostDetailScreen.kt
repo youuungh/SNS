@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
@@ -249,7 +248,9 @@ fun PostDetailScreen(
                 viewModel.setReplyToComment(null)
                 viewModel.clearTargetCommentId()
             },
-            onCommentSend = { text -> viewModel.onCommentSend(post.postId, text) },
+            onCommentSend = { text, mentionedUserIds, replyToCommentId ->
+                viewModel.onCommentSend(post.postId, text, mentionedUserIds, replyToCommentId)
+            },
             onReplyClick = { comment -> viewModel.setReplyToComment(comment) },
             onCancelReply = { viewModel.setReplyToComment(null) },
             onToggleReplies = { commentId -> viewModel.toggleRepliesVisibility(commentId) },

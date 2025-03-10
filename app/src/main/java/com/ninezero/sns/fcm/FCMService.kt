@@ -135,8 +135,8 @@ class FCMService : FirebaseMessagingService() {
         commentId: Long?,
         myUserId: Long
     ): Uri? = when (type) {
-        "like", "comment" -> boardId?.let {
-            val showComments = type == "comment"
+        "like", "comment", "reply" -> boardId?.let {
+            val showComments = type == "comment" || type == "reply"
             val commentParam = commentId?.let { "&commentId=$it" } ?: ""
             Uri.parse("ninezero://post_detail/$myUserId/$it?showComments=$showComments$commentParam")
         }

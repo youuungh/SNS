@@ -90,16 +90,17 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun loadComments(postId: Long) {
+        intent { reduce { state.copy(isLoadingComments = true) } }
+
         viewModelScope.launch {
             delay(600)
+
             when (val result = feedUseCase.getComments(postId)) {
                 is ApiResult.Success -> {
-                    val currentReplyCount = container.stateFlow.value.replyCount
                     val comments = result.data.map { pagingData ->
                         pagingData.map { comment ->
-                            comment.copy(
-                                replyCount = currentReplyCount[comment.id] ?: comment.replyCount
-                            )
+                            val currentReplyCount = container.stateFlow.value.replyCount[comment.id] ?: comment.replyCount
+                            comment.copy(replyCount = currentReplyCount)
                         }
                     }.cachedIn(viewModelScope)
 
@@ -112,6 +113,7 @@ class FeedViewModel @Inject constructor(
                         }
                     }
                 }
+
                 is ApiResult.Error -> {
                     intent {
                         reduce { state.copy(isLoadingComments = false) }
@@ -126,24 +128,29 @@ class FeedViewModel @Inject constructor(
         val postId = container.stateFlow.value.commentsSheetPost?.postId ?: return
 
         intent {
-            reduce {
-                state.copy(loadingReplyIds = state.loadingReplyIds + commentId)
+            if (!state.loadingReplyIds.contains(commentId)) {
+                reduce {
+                    state.copy(loadingReplyIds = state.loadingReplyIds + commentId)
+                }
             }
         }
 
         viewModelScope.launch {
             when (val result = feedUseCase.getReplies(postId, commentId)) {
                 is ApiResult.Success -> {
+                    val replies = result.data
+
                     intent {
                         reduce {
                             state.copy(
-                                replies = state.replies + (commentId to result.data),
+                                replies = state.replies + (commentId to replies),
                                 loadingReplyIds = state.loadingReplyIds - commentId,
-                                replyCount = state.replyCount + (commentId to result.data.size)
+                                replyCount = state.replyCount + (commentId to replies.size)
                             )
                         }
                     }
                 }
+
                 is ApiResult.Error -> {
                     intent {
                         reduce {
@@ -157,7 +164,26 @@ class FeedViewModel @Inject constructor(
     }
 
     fun setReplyToComment(comment: Comment?) = intent {
-        reduce { state.copy(replyToComment = comment) }
+        val parentId = comment?.parentId
+        val expandUpdates = if (comment?.depth == 1 && parentId != null) {
+            state.expandedCommentIds + (parentId to true)
+        } else {
+            state.expandedCommentIds
+        }
+
+        val targetId = if (comment?.depth == 1) {
+            null
+        } else {
+            comment?.id
+        }
+
+        reduce {
+            state.copy(
+                replyToComment = comment,
+                targetCommentId = targetId,
+                expandedCommentIds = expandUpdates
+            )
+        }
     }
 
     fun toggleRepliesVisibility(commentId: Long) = intent {
@@ -193,7 +219,11 @@ class FeedViewModel @Inject constructor(
                 isLoadingComments = true
             )
         }
-        loadComments(post.postId)
+
+        viewModelScope.launch {
+            delay(100)
+            loadComments(post.postId)
+        }
     }
 
     fun hideCommentsSheet() = intent {
@@ -201,12 +231,8 @@ class FeedViewModel @Inject constructor(
             state.copy(
                 commentsSheetPost = null,
                 comments = emptyFlow(),
-                commentCount = emptyMap(),
                 replyToComment = null,
-                expandedCommentIds = emptyMap(),
-                loadingReplyIds = emptySet(),
-                replies = emptyMap(),
-                replyCount = emptyMap()
+                targetCommentId = null
             )
         }
     }
@@ -245,6 +271,7 @@ class FeedViewModel @Inject constructor(
                 }
                 load()
             }
+
             is ApiResult.Error -> {
                 reduce { state.copy(isEditing = false) }
                 handleError(result)
@@ -269,67 +296,108 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    fun onCommentSend(postId: Long, text: String) = intent {
-        val parentId = state.replyToComment?.id
+    fun onCommentSend(
+        postId: Long,
+        text: String,
+        mentionedUserIds: List<Long>? = null,
+        replyToCommentId: Long? = null
+    ) = intent {
         val currentComment = state.replyToComment
+        val (actualParentId, actualReplyToCommentId, actualMentionedUserIds) = when {
+            currentComment?.depth == 1 -> {
+                Triple(
+                    currentComment.parentId,
+                    currentComment.id,
+                    mentionedUserIds ?: listOf(currentComment.userId)
+                )
+            }
+            else -> {
+                Triple(currentComment?.id, replyToCommentId, mentionedUserIds)
+            }
+        }
 
-        when (val result = feedUseCase.addComment(postId, text, parentId)) {
+        when (val result = feedUseCase.addComment(
+            postId,
+            text,
+            actualParentId,
+            actualMentionedUserIds,
+            actualReplyToCommentId
+        )) {
             is ApiResult.Success -> {
-                if (parentId != null && currentComment != null) {
-                    val currentReplyCount = state.replyCount[parentId] ?: currentComment.replyCount
+                val newCommentId = result.data
+
+                if (actualParentId != null && currentComment != null) {
+                    val currentReplyCount = state.replyCount[actualParentId] ?: currentComment.replyCount
                     val newReplyCount = currentReplyCount + 1
 
                     reduce {
                         state.copy(
-                            replyCount = state.replyCount + (parentId to newReplyCount),
+                            replyCount = state.replyCount + (actualParentId to newReplyCount),
                             replyToComment = null,
-                            expandedCommentIds = state.expandedCommentIds + (parentId to true)
+                            expandedCommentIds = state.expandedCommentIds + (actualParentId to true),
+                            targetCommentId = newCommentId
                         )
                     }
 
                     viewModelScope.launch {
-                        when (val repliesResult = feedUseCase.getReplies(postId, parentId)) {
+                        when (val repliesResult = feedUseCase.getReplies(postId, actualParentId)) {
                             is ApiResult.Success -> {
+                                val updatedReplies = repliesResult.data
+
                                 intent {
                                     reduce {
                                         state.copy(
-                                            replies = state.replies + (parentId to repliesResult.data)
+                                            replies = state.replies + (actualParentId to updatedReplies)
                                         )
                                     }
                                 }
 
-                                when (val commentsResult = feedUseCase.getComments(postId)) {
-                                    is ApiResult.Success -> {
-                                        val updatedComments = commentsResult.data.map { pagingData ->
-                                            pagingData.map { comment ->
-                                                if (comment.id == parentId) {
-                                                    comment.copy(replyCount = repliesResult.data.size)
-                                                } else {
-                                                    comment
-                                                }
-                                            }
-                                        }.cachedIn(viewModelScope)
-
-                                        intent {
-                                            reduce {
-                                                state.copy(
-                                                    comments = updatedComments,
-                                                    isLoadingComments = false
-                                                )
-                                            }
-                                        }
-                                    }
-                                    is ApiResult.Error -> handleError(commentsResult)
-                                }
+                                refreshCommentWithUpdatedReplyCounts(postId, actualParentId, updatedReplies.size)
                             }
+
                             is ApiResult.Error -> handleError(repliesResult)
                         }
                     }
                 } else {
+                    reduce {
+                        state.copy(
+                            targetCommentId = newCommentId
+                        )
+                    }
                     loadComments(postId)
                 }
             }
+
             is ApiResult.Error -> handleError(result)
+        }
+    }
+
+    private fun refreshCommentWithUpdatedReplyCounts(postId: Long, parentId: Long, replyCount: Int) {
+        viewModelScope.launch {
+            when (val commentsResult = feedUseCase.getComments(postId)) {
+                is ApiResult.Success -> {
+                    val updatedComments = commentsResult.data.map { pagingData ->
+                        pagingData.map { comment ->
+                            if (comment.id == parentId) {
+                                comment.copy(replyCount = replyCount)
+                            } else {
+                                comment
+                            }
+                        }
+                    }.cachedIn(viewModelScope)
+
+                    intent {
+                        reduce {
+                            state.copy(
+                                comments = updatedComments,
+                                isLoadingComments = false
+                            )
+                        }
+                    }
+                }
+
+                is ApiResult.Error -> handleError(commentsResult)
+            }
         }
     }
 
@@ -342,37 +410,26 @@ class FeedViewModel @Inject constructor(
                 if (parentId != null) {
                     val parentReplyCount = (state.replyCount[parentId] ?: 1) - 1
 
-                    when (val commentsResult = feedUseCase.getComments(postId)) {
-                        is ApiResult.Success -> {
-                            val updatedComments = commentsResult.data.map { pagingData ->
-                                pagingData.map { comment ->
-                                    if (comment.id == parentId) {
-                                        comment.copy(replyCount = parentReplyCount)
-                                    } else {
-                                        comment
-                                    }
-                                }
-                            }.cachedIn(viewModelScope)
+                    reduce {
+                        state.copy(
+                            commentCount = state.commentCount + (postId to currentCount - 1),
+                            replyCount = state.replyCount + (parentId to parentReplyCount),
+                            dialog = FeedDialog.Hidden
+                        )
+                    }
 
-                            reduce {
-                                state.copy(
-                                    commentCount = state.commentCount + (postId to currentCount - 1),
-                                    replyCount = state.replyCount + (parentId to parentReplyCount),
-                                    comments = updatedComments,
-                                    expandedCommentIds = state.expandedCommentIds - parentId,
-                                    replies = state.replies - parentId,
-                                    dialog = FeedDialog.Hidden
-                                )
-                            }
-
-                            if (parentReplyCount > 0) {
-                                loadRepliesForComment(parentId)
-                            }
-                        }
-                        is ApiResult.Error -> {
-                            handleError(commentsResult)
+                    if (parentReplyCount > 0) {
+                        loadRepliesForComment(parentId)
+                    } else {
+                        reduce {
+                            state.copy(
+                                expandedCommentIds = state.expandedCommentIds - parentId,
+                                replies = state.replies - parentId
+                            )
                         }
                     }
+
+                    refreshCommentWithUpdatedReplyCounts(postId, parentId, parentReplyCount)
                 } else {
                     reduce {
                         state.copy(
@@ -383,18 +440,25 @@ class FeedViewModel @Inject constructor(
                             dialog = FeedDialog.Hidden
                         )
                     }
+
                     loadComments(postId)
                 }
             }
-            is ApiResult.Error -> {
-                handleError(result)
-            }
+
+            is ApiResult.Error -> handleError(result)
         }
     }
 
     fun handleLikeClick(postId: Long, post: PostCardModel) = intent {
         val isLiked = state.isLiked[postId] ?: post.isLiked
         val likesCount = state.likesCount[postId] ?: post.likesCount
+
+        reduce {
+            state.copy(
+                isLiked = state.isLiked + (postId to !isLiked),
+                likesCount = state.likesCount + (postId to if (isLiked) likesCount - 1 else likesCount + 1)
+            )
+        }
 
         if (isLiked) {
             when (val result = feedUseCase.unlikePost(postId)) {
@@ -407,7 +471,15 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> {
+                    reduce {
+                        state.copy(
+                            isLiked = state.isLiked + (postId to true),
+                            likesCount = state.likesCount + (postId to likesCount)
+                        )
+                    }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
         } else {
             when (val result = feedUseCase.likePost(postId)) {
@@ -420,13 +492,27 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> {
+                    reduce {
+                        state.copy(
+                            isLiked = state.isLiked + (postId to false),
+                            likesCount = state.likesCount + (postId to likesCount)
+                        )
+                    }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
         }
     }
 
     fun handleFollowClick(userId: Long, post: PostCardModel) = intent {
         val isFollowing = state.isFollowing[userId] ?: post.isFollowing
+
+        reduce {
+            state.copy(
+                isFollowing = state.isFollowing + (userId to !isFollowing)
+            )
+        }
 
         if (isFollowing) {
             when (val result = userUseCase.unfollowUser(userId)) {
@@ -437,7 +523,15 @@ class FeedViewModel @Inject constructor(
                         )
                     }
                 }
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+
+                is ApiResult.Error -> {
+                    reduce {
+                        state.copy(
+                            isFollowing = state.isFollowing + (userId to true)
+                        )
+                    }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
         } else {
             when (val result = userUseCase.followUser(userId)) {
@@ -448,13 +542,27 @@ class FeedViewModel @Inject constructor(
                         )
                     }
                 }
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+
+                is ApiResult.Error -> {
+                    reduce {
+                        state.copy(
+                            isFollowing = state.isFollowing + (userId to false)
+                        )
+                    }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
         }
     }
 
     fun handleSavedClick(postId: Long, post: PostCardModel) = intent {
         val isSaved = state.isSaved[postId] ?: post.isSaved
+
+        reduce {
+            state.copy(
+                isSaved = state.isSaved + (postId to !isSaved)
+            )
+        }
 
         if (isSaved) {
             when (val result = feedUseCase.unsavePost(postId)) {
@@ -466,7 +574,14 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> {
+                    reduce {
+                        state.copy(
+                            isSaved = state.isSaved + (postId to true)
+                        )
+                    }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
         } else {
             when (val result = feedUseCase.savePost(postId)) {
@@ -478,7 +593,14 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
-                is ApiResult.Error -> postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                is ApiResult.Error -> {
+                    reduce {
+                        state.copy(
+                            isSaved = state.isSaved + (postId to false)
+                        )
+                    }
+                    postSideEffect(FeedSideEffect.ShowSnackbar(result.message))
+                }
             }
         }
     }
@@ -508,6 +630,7 @@ data class FeedState(
     val loadingReplyIds: Set<Long> = emptySet(),
     val replies: Map<Long, List<Comment>> = emptyMap(),
     val replyCount: Map<Long, Int> = emptyMap(),
+    val targetCommentId: Long? = null,
 
     // like & save
     val likesCount: Map<Long, Int> = emptyMap(),

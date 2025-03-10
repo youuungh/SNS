@@ -36,7 +36,8 @@ class PostDetailViewModel @Inject constructor(
     private val userId: Long = checkNotNull(savedStateHandle["userId"])
     private val postId: Long = checkNotNull(savedStateHandle["postId"])
 
-    override val container: Container<PostDetailState, PostDetailSideEffect> = container(initialState = PostDetailState())
+    override val container: Container<PostDetailState, PostDetailSideEffect> =
+        container(initialState = PostDetailState())
 
     private var isInitialLoad = true
 
@@ -74,6 +75,7 @@ class PostDetailViewModel @Inject constructor(
                         )
                     }
                 }
+
                 is ApiResult.Error -> {
                     reduce { state.copy(isLoading = false, isRefreshing = false) }
                     postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
@@ -116,6 +118,7 @@ class PostDetailViewModel @Inject constructor(
                 }
                 load()
             }
+
             is ApiResult.Error -> {
                 postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
@@ -144,6 +147,7 @@ class PostDetailViewModel @Inject constructor(
                 }
                 load()
             }
+
             is ApiResult.Error -> {
                 reduce { state.copy(isEditing = false) }
                 handleError(result)
@@ -200,6 +204,7 @@ class PostDetailViewModel @Inject constructor(
                         }
                     }
                 }
+
                 is ApiResult.Error -> {
                     intent {
                         reduce { state.copy(isLoadingComments = false) }
@@ -254,6 +259,7 @@ class PostDetailViewModel @Inject constructor(
                         }
                     }
                 }
+
                 is ApiResult.Error -> {
                     intent {
                         reduce {
@@ -266,11 +272,22 @@ class PostDetailViewModel @Inject constructor(
         }
     }
 
-    fun onCommentSend(postId: Long, text: String) = intent {
+    fun onCommentSend(
+        postId: Long,
+        text: String,
+        mentionedUserIds: List<Long>? = null,
+        replyToCommentId: Long? = null
+    ) = intent {
         val parentId = state.replyToComment?.id
         val currentComment = state.replyToComment
 
-        when (val result = feedUseCase.addComment(postId, text, parentId)) {
+        when (val result = feedUseCase.addComment(
+            postId,
+            text,
+            parentId,
+            mentionedUserIds,
+            replyToCommentId ?: (if (currentComment?.depth == 1) currentComment.parentId else null)
+        )) {
             is ApiResult.Success -> {
                 if (parentId != null && currentComment != null) {
                     val currentReplyCount = state.replyCount[parentId] ?: currentComment.replyCount
@@ -297,15 +314,16 @@ class PostDetailViewModel @Inject constructor(
 
                                 when (val commentsResult = feedUseCase.getComments(postId)) {
                                     is ApiResult.Success -> {
-                                        val updatedComments = commentsResult.data.map { pagingData ->
-                                            pagingData.map { comment ->
-                                                if (comment.id == parentId) {
-                                                    comment.copy(replyCount = repliesResult.data.size)
-                                                } else {
-                                                    comment
+                                        val updatedComments =
+                                            commentsResult.data.map { pagingData ->
+                                                pagingData.map { comment ->
+                                                    if (comment.id == parentId) {
+                                                        comment.copy(replyCount = repliesResult.data.size)
+                                                    } else {
+                                                        comment
+                                                    }
                                                 }
-                                            }
-                                        }.cachedIn(viewModelScope)
+                                            }.cachedIn(viewModelScope)
 
                                         intent {
                                             reduce {
@@ -316,9 +334,11 @@ class PostDetailViewModel @Inject constructor(
                                             }
                                         }
                                     }
+
                                     is ApiResult.Error -> handleError(commentsResult)
                                 }
                             }
+
                             is ApiResult.Error -> handleError(repliesResult)
                         }
                     }
@@ -326,6 +346,7 @@ class PostDetailViewModel @Inject constructor(
                     loadComments(postId)
                 }
             }
+
             is ApiResult.Error -> handleError(result)
         }
     }
@@ -374,6 +395,7 @@ class PostDetailViewModel @Inject constructor(
                                 loadRepliesForComment(parentId)
                             }
                         }
+
                         is ApiResult.Error -> {
                             handleError(commentsResult)
                         }
@@ -391,6 +413,7 @@ class PostDetailViewModel @Inject constructor(
                     loadComments(postId)
                 }
             }
+
             is ApiResult.Error -> {
                 postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
@@ -442,6 +465,7 @@ class PostDetailViewModel @Inject constructor(
                         )
                     }
                 }
+
                 is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         } else {
@@ -453,6 +477,7 @@ class PostDetailViewModel @Inject constructor(
                         )
                     }
                 }
+
                 is ApiResult.Error -> postSideEffect(PostDetailSideEffect.ShowSnackbar(result.message))
             }
         }

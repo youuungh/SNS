@@ -223,11 +223,22 @@ class FeedUseCaseImpl @Inject constructor(
         }
     }
 
-    override suspend fun addComment(postId: Long, text: String, parentId: Long?): ApiResult<Long> {
+    override suspend fun addComment(
+        postId: Long,
+        text: String,
+        parentId: Long?,
+        mentionedUserIds: List<Long>?,
+        replyToCommentId: Long?
+    ): ApiResult<Long> {
         return try {
             checkNetwork()?.let { return it } // 네트워크 상태 확인
 
-            val commentParam = CommentParam(comment = text, parentId = parentId)
+            val commentParam = CommentParam(
+                comment = text,
+                parentId = parentId,
+                mentionedUserIds = mentionedUserIds,
+                replyToCommentId = replyToCommentId
+            )
             val response = postService.addComment(postId = postId, requestBody = commentParam)
             if (response.result == "SUCCESS") {
                 ApiResult.Success(response.data!!)
