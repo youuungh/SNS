@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ninezero.presentation.chat.ChatScreen
 import com.ninezero.presentation.detail.PostDetailScreen
+import com.ninezero.presentation.feed.FeedViewModel
 import com.ninezero.presentation.notification.NotificationScreen
 import com.ninezero.presentation.user.UserScreen
 import timber.log.Timber
@@ -30,6 +31,7 @@ fun MainNavHost(
     deepLink: Uri? = null,
     chatNotificationData: ChatNotificationData? = null,
     viewModel: MainViewModel = hiltViewModel(),
+    feedViewModel: FeedViewModel,
     onNavigateToPost: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit
@@ -125,15 +127,12 @@ fun MainNavHost(
         ) {
             MainContent(
                 viewModel = viewModel,
+                feedViewModel = feedViewModel,
                 onNavigateToPost = onNavigateToPost,
                 onNavigateToSettings = onNavigateToSettings,
                 onNavigateToLogin = onNavigateToLogin,
-                onNavigateToUser = { userId ->
-                    navController.navigate("${MainRoute.User.route}/$userId")
-                },
-                onNavigateToNotification = {
-                    navController.navigate(MainRoute.Notification.route)
-                },
+                onNavigateToUser = { userId -> navController.navigate("${MainRoute.User.route}/$userId") },
+                onNavigateToNotification = { navController.navigate(MainRoute.Notification.route) },
                 onNavigateToChat = { otherUserId, roomId, otherUserLoginId, otherUserName, otherUserProfilePath, myUserId ->
                     navController.navigate(
                         MainRoute.Chat.navigate(

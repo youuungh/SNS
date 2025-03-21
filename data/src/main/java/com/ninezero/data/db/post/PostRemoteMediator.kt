@@ -23,10 +23,7 @@ class PostRemoteMediator @Inject constructor(
         return InitializeAction.LAUNCH_INITIAL_REFRESH
     }
 
-    override suspend fun load(
-        loadType: LoadType,
-        state: PagingState<Int, PostDto>
-    ): MediatorResult {
+    override suspend fun load(loadType: LoadType, state: PagingState<Int, PostDto>): MediatorResult {
         Timber.d("LoadType: $loadType")
         try {
             if (!networkRepository.isNetworkAvailable()) {

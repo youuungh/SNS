@@ -143,7 +143,9 @@ fun PostImageScreen(
                     }
 
                     item {
-                        val gridHeight = calculateGridHeight(state.images.size, screenWidth)
+                        val gridHeight = remember(state.images.size, screenWidth) {
+                            calculateGridHeight(state.images.size, screenWidth)
+                        }
 
                         LazyVerticalGrid(
                             modifier = Modifier

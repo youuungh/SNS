@@ -12,7 +12,8 @@ import androidx.core.os.bundleOf
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.ninezero.data.UserDataStore
-import com.ninezero.domain.usecase.FCMTokenUseCase
+import com.ninezero.domain.usecase.FCMUseCase
+import com.ninezero.domain.usecase.NotificationType
 import com.ninezero.presentation.main.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +23,14 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import com.ninezero.presentation.R
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class FCMService : FirebaseMessagingService() {
 
     @Inject
-    lateinit var fcmTokenUseCase: FCMTokenUseCase
+    lateinit var fcmUseCase: FCMUseCase
 
     @Inject
     lateinit var userDataStore: UserDataStore
@@ -42,7 +44,7 @@ class FCMService : FirebaseMessagingService() {
         scope.launch {
             try {
                 userDataStore.setFcmToken(token)
-                userDataStore.getToken()?.let { fcmTokenUseCase.registerToken(token) }
+                userDataStore.getToken()?.let { fcmUseCase.registerToken(token) }
             } catch (e: Exception) {
                 Timber.e(e, "FCM 토큰 업데이트 실패")
             }
@@ -55,22 +57,39 @@ class FCMService : FirebaseMessagingService() {
 
         val data = message.data
         val type = data["type"] ?: return
-        val title = data["title"] ?: "알림"
-        val body = data["body"] ?: "새로운 알림이 있습니다"
-
-        val senderId = when (type) {
-            "follow" -> data["userId"]?.toLongOrNull()
-            else -> data["senderId"]?.toLongOrNull()
-        }
-
-        val boardId = data["boardId"]?.toLongOrNull()
-        val commentId = data["commentId"]?.toLongOrNull()
-        val roomId = data["roomId"]
-        val senderLoginId = data["senderLoginId"]
-        val senderName = data["senderName"]
-        val senderProfileImagePath = data["senderProfileImagePath"]
 
         scope.launch {
+            val notificationsEnabled = userDataStore.getNotificationsEnabled().first()
+            if (!notificationsEnabled) {
+                Timber.d("알림이 비활성화되어 있습니다")
+                return@launch
+            }
+
+            val notificationType = NotificationType.fromString(type)
+
+            if (notificationType != null) {
+                val typeEnabled = fcmUseCase.getNotificationType(notificationType).first()
+                if (!typeEnabled) {
+                    Timber.d("$type 유형의 알림이 비활성화되어 있습니다")
+                    return@launch
+                }
+            }
+
+            val title = data["title"] ?: "알림"
+            val body = data["body"] ?: "새로운 알림이 있습니다"
+
+            val senderId = when (type) {
+                "follow" -> data["userId"]?.toLongOrNull()
+                else -> data["senderId"]?.toLongOrNull()
+            }
+
+            val boardId = data["boardId"]?.toLongOrNull()
+            val commentId = data["commentId"]?.toLongOrNull()
+            val roomId = data["roomId"]
+            val senderLoginId = data["senderLoginId"]
+            val senderName = data["senderName"]
+            val senderProfileImagePath = data["senderProfileImagePath"]
+
             val myUserId = try {
                 userDataStore.getUserId()
             } catch (e: Exception) {

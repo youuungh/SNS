@@ -21,7 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -71,6 +73,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun ExploreScreen(
+    gridState: LazyGridState = rememberLazyGridState(),
     snackbarHostState: SnackbarHostState,
     searchViewModel: SearchViewModel,
     onNavigateToUser: (Long) -> Unit
@@ -152,6 +155,7 @@ fun ExploreScreen(
                                     EmptyFeedScreen()
                                 } else {
                                     LazyVerticalGrid(
+                                        state = gridState,
                                         modifier = Modifier.fillMaxSize(),
                                         columns = GridCells.Fixed(3),
                                         horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),

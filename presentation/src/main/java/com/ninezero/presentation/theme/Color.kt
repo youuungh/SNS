@@ -80,3 +80,6 @@ val snsFollowDefault = Color(0xFFF3F5F7)
 // Error
 val errorLight = Color(0xFFDC3545)
 val errorDark = Color(0xFFE57373)
+
+val snsNaver = Color(0xFF03C75A)
+val snsKakao = Color(0xFFFEE500)

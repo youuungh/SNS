@@ -6,6 +6,7 @@ import com.ninezero.data.model.param.LoginParam
 import com.ninezero.data.model.param.SignUpParam
 import com.ninezero.data.model.param.UpdateMyInfoParam
 import com.ninezero.data.model.dto.UserDto
+import com.ninezero.data.model.param.SocialLoginParam
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -34,6 +35,12 @@ class UserService @Inject constructor(
     suspend fun login(loginParam: LoginParam): CommonResponse<String> {
         return client.post("users/login") {
             setBody(loginParam)
+        }.body()
+    }
+
+    suspend fun socialLogin(socialLoginParam: SocialLoginParam): CommonResponse<String> {
+        return client.post("users/social-login") {
+            setBody(socialLoginParam)
         }.body()
     }
 

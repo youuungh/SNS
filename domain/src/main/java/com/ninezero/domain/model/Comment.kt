@@ -1,5 +1,8 @@
 package com.ninezero.domain.model
 
+import androidx.compose.runtime.Stable
+
+@Stable
 data class Comment(
     val id: Long,
     val userId: Long,

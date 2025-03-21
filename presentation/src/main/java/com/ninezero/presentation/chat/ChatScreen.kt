@@ -15,9 +15,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -32,15 +33,11 @@ import com.ninezero.presentation.component.LeftAlignedDetailScaffold
 import com.ninezero.presentation.component.LoadingProgress
 import com.ninezero.presentation.component.NetworkErrorScreen
 import com.ninezero.presentation.component.SNSSurface
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
+import com.ninezero.presentation.util.parseMessageDate
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
-import timber.log.Timber
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 @Composable
 fun ChatScreen(
@@ -60,36 +57,34 @@ fun ChatScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val groupedMessages = remember(state.messages) {
-        state.messages
-            .asSequence()
-            .groupBy { message ->
-                try {
-                    LocalDateTime.parse(message.createdAt, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                        .toLocalDate()
-                } catch (e: Exception) {
-                    Timber.e(e, "날짜 파싱 실패: ${message.id}")
-                }
-            }
-            .mapKeys { (key, values) ->
-                values.first().createdAt
-            }
-            .toSortedMap(compareByDescending { it })
+    val markedAsReadMessageIds = remember { mutableSetOf<String>() }
+
+    val groupedMessages by remember {
+        derivedStateOf {
+            state.messages
+                .asSequence()
+                .groupBy { message -> parseMessageDate(message.createdAt) }
+                .filterKeys { it != null }
+                .mapKeys { (_, values) -> values.first().createdAt }
+                .toSortedMap(compareByDescending { it })
+        }
     }
 
-    LaunchedEffect(listState) {
-        snapshotFlow {
+    val shouldLoadMore by remember {
+        derivedStateOf {
             if (listState.layoutInfo.totalItemsCount > 0) {
-                listState.firstVisibleItemIndex
-            } else null
+                val firstVisibleIndex = listState.firstVisibleItemIndex
+                firstVisibleIndex >= state.messages.size - 10 &&
+                        !state.isLoadingMore &&
+                        state.hasMoreMessages
+            } else false
         }
-            .filterNotNull()
-            .distinctUntilChanged()
-            .collectLatest { index ->
-                if (index >= state.messages.size - 10 && !state.isLoadingMore && state.hasMoreMessages) {
-                    viewModel.loadMoreMessages()
-                }
-            }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            viewModel.loadMoreMessages()
+        }
     }
 
     viewModel.collectSideEffect { sideEffect ->
@@ -179,7 +174,10 @@ fun ChatScreen(
                             key = { it.id }
                         ) { message ->
                             LaunchedEffect(message.id) {
-                                viewModel.markAsRead(message.id)
+                                if (message.senderId != myUserId && !markedAsReadMessageIds.contains(message.id)) {
+                                    markedAsReadMessageIds.add(message.id)
+                                    viewModel.markAsRead(message.id)
+                                }
                             }
 
                             ChatMessageItem(

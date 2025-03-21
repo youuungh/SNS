@@ -17,6 +17,7 @@ kotlin {
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.runtime)
 
     //Paging
     implementation(libs.androidx.paging.common)

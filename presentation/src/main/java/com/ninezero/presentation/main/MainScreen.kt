@@ -44,6 +44,7 @@ import com.ninezero.presentation.profile.ProfileScreen
 import com.ninezero.presentation.theme.SNSTheme
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSIconButton
+import com.ninezero.presentation.feed.FeedViewModel
 import com.ninezero.presentation.message.MessageScreen
 import com.ninezero.presentation.notification.NotificationViewModel
 import com.ninezero.presentation.search.ExploreScreen
@@ -62,10 +63,13 @@ fun MainScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
+    val feedViewModel: FeedViewModel = hiltViewModel()
+
     MainNavHost(
         deepLink = deepLink,
         chatNotificationData = chatNotificationData,
         viewModel = viewModel,
+        feedViewModel = feedViewModel,
         onNavigateToPost = onNavigateToPost,
         onNavigateToSettings = onNavigateToSettings,
         onNavigateToLogin = onNavigateToLogin
@@ -75,7 +79,7 @@ fun MainScreen(
 @Composable
 fun MainContent(
     viewModel: MainViewModel,
-    //notificationUseCase: NotificationUseCase = hiltViewModel<NotificationViewModel>().notificationUseCase,
+    feedViewModel: FeedViewModel,
     onNavigateToPost: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToLogin: () -> Unit,
@@ -113,6 +117,8 @@ fun MainContent(
         remember { FocusRequester() }
     }
 
+    val currentTab = remember { mutableStateOf(MainRoute.BottomNavItem.Feed.route) }
+
     val permissionHandler = remember(activity, context, scope, snackbarHostState, onNavigateToPost) {
         PermissionHandler(
             context = context,
@@ -130,6 +136,17 @@ fun MainContent(
 
     LaunchedEffect(permissionLauncher) {
         permissionHandler.setPermissionLauncher(permissionLauncher)
+    }
+
+    LaunchedEffect(currentRoute) {
+        when (currentRoute) {
+            MainRoute.BottomNavItem.Feed.route,
+            MainRoute.BottomNavItem.Search.route,
+            MainRoute.BottomNavItem.Message.route,
+            MainRoute.BottomNavItem.Profile.route -> {
+                currentTab.value = currentRoute
+            }
+        }
     }
 
     LaunchedEffect(isSearchMode, currentRoute) {
@@ -153,14 +170,24 @@ fun MainContent(
         else -> ""
     }
 
-    val navigationCallback = remember(navController) {
+    val navigationCallback = remember(navController, feedViewModel) {
         { route: String ->
-            when (route) {
-                MainRoute.BottomNavItem.Post.route ->
+            when {
+                route == MainRoute.BottomNavItem.Feed.route && currentTab.value == route -> {
+                    feedViewModel.scrollToTopAndRefresh()
+                }
+                route == MainRoute.BottomNavItem.Post.route -> {
                     permissionHandler.checkAndRequestPermissions(permissionLauncher)
-                else -> navController.navigate(route) {
-                    popUpTo(navController.graph.startDestinationId)
-                    launchSingleTop = true
+                }
+                else -> {
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        restoreState = true
+                        launchSingleTop = true
+                    }
+                    currentTab.value = route
                 }
             }
         }
@@ -219,9 +246,10 @@ fun MainContent(
         ) {
             composable(MainRoute.BottomNavItem.Feed.route) {
                 FeedScreen(
+                    viewModel = feedViewModel,
                     snackbarHostState = snackbarHostState,
                     onNavigateToLogin = onNavigateToLogin,
-                    onNavigateToProfile = { navController.navigate(MainRoute.BottomNavItem.Profile.route) },
+                    onNavigateToProfile = { navigationCallback(MainRoute.BottomNavItem.Profile.route) },
                     onNavigateToUser = onNavigateToUser
                 )
             }

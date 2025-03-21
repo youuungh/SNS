@@ -2,7 +2,7 @@ package com.ninezero.data.di
 
 import com.ninezero.data.usecase.AuthUseCaseImpl
 import com.ninezero.data.usecase.ChatUseCaseImpl
-import com.ninezero.data.usecase.FCMTokenUseCaseImpl
+import com.ninezero.data.usecase.FCMUseCaseImpl
 import com.ninezero.data.usecase.FeedUseCaseImpl
 import com.ninezero.data.usecase.FileUseCaseImpl
 import com.ninezero.data.usecase.NotificationUseCaseImpl
@@ -11,7 +11,7 @@ import com.ninezero.data.usecase.ThemeUseCaseImpl
 import com.ninezero.data.usecase.UserUseCaseImpl
 import com.ninezero.domain.usecase.AuthUseCase
 import com.ninezero.domain.usecase.ChatUseCase
-import com.ninezero.domain.usecase.FCMTokenUseCase
+import com.ninezero.domain.usecase.FCMUseCase
 import com.ninezero.domain.usecase.FeedUseCase
 import com.ninezero.domain.usecase.FileUseCase
 import com.ninezero.domain.usecase.NotificationUseCase
@@ -45,7 +45,7 @@ abstract class UserModule {
     abstract fun bindChatUseCase(chatUseCaseImpl: ChatUseCaseImpl): ChatUseCase
 
     @Binds
-    abstract fun bindFCMTokenUseCase(fcmTokenUseCaseImpl: FCMTokenUseCaseImpl): FCMTokenUseCase
+    abstract fun bindFCMUseCase(fcmUseCaseImpl: FCMUseCaseImpl): FCMUseCase
 
     @Binds
     abstract fun bindNotificationUseCase(notificationUseCaseImpl: NotificationUseCaseImpl): NotificationUseCase

@@ -51,6 +51,9 @@ android {
 dependencies {
     implementation(project(":domain"))
 
+    // Authentication
+    implementation(libs.oauth)
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

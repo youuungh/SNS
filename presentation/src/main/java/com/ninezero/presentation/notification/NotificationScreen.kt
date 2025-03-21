@@ -245,7 +245,9 @@ fun NotificationScreen(
                             color = MaterialTheme.colorScheme.surface
                         ) {
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .navigationBarsPadding(),
                                 contentPadding = PaddingValues(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {

@@ -285,7 +285,9 @@ private fun UserPostItems(
     onPostClick: (Long) -> Unit
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val gridHeight = calculateGridHeight(posts.itemCount, screenHeight)
+    val gridHeight = remember(posts.itemCount) {
+        calculateGridHeight(posts.itemCount, screenHeight)
+    }
 
     LazyVerticalGrid(
         modifier = Modifier

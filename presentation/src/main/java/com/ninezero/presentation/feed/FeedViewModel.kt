@@ -16,6 +16,8 @@ import com.ninezero.presentation.model.toModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -35,6 +37,9 @@ class FeedViewModel @Inject constructor(
     override val container: Container<FeedState, FeedSideEffect> = container(initialState = FeedState())
 
     private var isInitialLoad = true
+
+    private val _scrollToTop = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val scrollToTop = _scrollToTop.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -61,11 +66,48 @@ class FeedViewModel @Inject constructor(
 
             when (val result = feedUseCase.getPosts()) {
                 is ApiResult.Success -> {
+                    val updatedLikesCountStates = mutableMapOf<Long, Int>()
+                    val updatedCommentCountStates = mutableMapOf<Long, Int>()
+                    val updatedLikedStates = mutableMapOf<Long, Boolean>()
+                    val updatedSavedStates = mutableMapOf<Long, Boolean>()
+                    val updatedFollowingStates = mutableMapOf<Long, Boolean>()
+
                     val posts = result.data
-                        .map { pagingData -> pagingData.map { it.toModel() } }
+                        .map { pagingData ->
+                            pagingData.map {
+                                updatedLikesCountStates[it.id] = it.likesCount
+                                updatedCommentCountStates[it.id] = it.commentCount
+                                updatedLikedStates[it.id] = it.isLiked
+                                updatedSavedStates[it.id] = it.isSaved
+                                if (it.userId != myUserId) {
+                                    updatedFollowingStates[it.userId] = it.isFollowing
+                                }
+                                it.toModel()
+                            }
+                        }
                         .cachedIn(viewModelScope)
 
-                    reduce { state.copy(posts = posts, isRefreshing = false) }
+                    reduce {
+                        state.copy(
+                            posts = posts,
+                            isRefreshing = false
+                        )
+                    }
+
+                    viewModelScope.launch {
+                        delay(300)
+                        intent {
+                            reduce {
+                                state.copy(
+                                    likesCount = updatedLikesCountStates,
+                                    commentCount = updatedCommentCountStates,
+                                    isLiked = updatedLikedStates,
+                                    isSaved = updatedSavedStates,
+                                    isFollowing = updatedFollowingStates
+                                )
+                            }
+                        }
+                    }
 
                     if (!isOnline) {
                         postSideEffect(FeedSideEffect.ShowSnackbar("네트워크 연결 오류"))
@@ -83,6 +125,14 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun scrollToTopAndRefresh() {
+        viewModelScope.launch {
+            _scrollToTop.emit(Unit)
+            delay(300)
+            refresh()
+        }
+    }
+
     fun refresh() = intent {
         reduce { state.copy(isRefreshing = true) }
         delay(2000)
@@ -94,7 +144,6 @@ class FeedViewModel @Inject constructor(
 
         viewModelScope.launch {
             delay(600)
-
             when (val result = feedUseCase.getComments(postId)) {
                 is ApiResult.Success -> {
                     val comments = result.data.map { pagingData ->
@@ -618,10 +667,16 @@ class FeedViewModel @Inject constructor(
 @Immutable
 data class FeedState(
     val myUserId: Long = -1L,
-    val posts: Flow<PagingData<PostCardModel>> = emptyFlow(),
     val deletedPostIds: Set<Long> = emptySet(),
+    val posts: Flow<PagingData<PostCardModel>> = emptyFlow(),
 
-    // comment
+    // 좋아요, 저장, 팔로우 상태
+    val likesCount: Map<Long, Int> = emptyMap(),
+    val isLiked: Map<Long, Boolean> = emptyMap(),
+    val isFollowing: Map<Long, Boolean> = emptyMap(),
+    val isSaved: Map<Long, Boolean> = emptyMap(),
+
+    // 댓글
     val comments: Flow<PagingData<Comment>> = emptyFlow(),
     val commentCount: Map<Long, Int> = emptyMap(),
     val isLoadingComments: Boolean = false,
@@ -632,17 +687,15 @@ data class FeedState(
     val replyCount: Map<Long, Int> = emptyMap(),
     val targetCommentId: Long? = null,
 
-    // like & save
-    val likesCount: Map<Long, Int> = emptyMap(),
-    val isLiked: Map<Long, Boolean> = emptyMap(),
-    val isFollowing: Map<Long, Boolean> = emptyMap(),
-    val isSaved: Map<Long, Boolean> = emptyMap(),
-    val isRefreshing: Boolean = false,
-    val isEditing: Boolean = false,
+    // 옵션 관련
     val dialog: FeedDialog = FeedDialog.Hidden,
     val optionsSheetPost: PostCardModel? = null,
     val commentsSheetPost: PostCardModel? = null,
-    val editSheetPost: PostCardModel? = null
+    val editSheetPost: PostCardModel? = null,
+    val isEditing: Boolean = false,
+
+    // 상태
+    val isRefreshing: Boolean = false
 )
 
 sealed interface FeedDialog {

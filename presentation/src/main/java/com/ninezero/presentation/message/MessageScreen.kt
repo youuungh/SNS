@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -13,9 +14,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,10 +34,7 @@ import com.ninezero.presentation.component.EmptyMessageScreen
 import com.ninezero.presentation.component.LeaveRoomDialog
 import com.ninezero.presentation.component.NetworkErrorScreen
 import com.ninezero.presentation.component.SNSSurface
-import com.ninezero.presentation.component.bottomsheet.ActionBottomSheet
 import com.ninezero.presentation.component.bottomsheet.LeaveRoomBottomSheet
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 
 @Composable
 fun MessageScreen(
@@ -56,21 +54,22 @@ fun MessageScreen(
     val listState = rememberLazyListState()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(listState) {
-        snapshotFlow {
+    val shouldLoadMoreRooms = remember {
+        derivedStateOf {
             val layoutInfo = listState.layoutInfo
             val totalItemsCount = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
 
-            lastVisibleItemIndex >= (totalItemsCount - 5)
+            lastVisibleItemIndex >= (totalItemsCount - 5) &&
+                    !state.isLoadingMore &&
+                    state.hasMoreRooms
         }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect {
-                if (!state.isLoadingMore && state.hasMoreRooms) {
-                    viewModel.loadMoreRooms()
-                }
-            }
+    }
+
+    LaunchedEffect(shouldLoadMoreRooms.value) {
+        if (shouldLoadMoreRooms.value) {
+            viewModel.loadMoreRooms()
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -128,7 +127,9 @@ fun MessageScreen(
                     ) {
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .navigationBarsPadding(),
                             contentPadding = PaddingValues(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {

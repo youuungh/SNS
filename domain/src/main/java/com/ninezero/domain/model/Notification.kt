@@ -1,5 +1,8 @@
 package com.ninezero.domain.model
 
+import androidx.compose.runtime.Stable
+
+@Stable
 data class Notification(
     val id: Long,
     val type: String,

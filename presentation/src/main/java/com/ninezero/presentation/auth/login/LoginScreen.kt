@@ -1,5 +1,6 @@
 package com.ninezero.presentation.auth.login
 
+import android.app.Activity
 import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -27,6 +30,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ninezero.presentation.R
 import com.ninezero.presentation.component.SNSButton
 import com.ninezero.presentation.component.DetailScaffold
+import com.ninezero.presentation.component.GoogleLoginButton
+import com.ninezero.presentation.component.KakaoLoginButton
+import com.ninezero.presentation.component.NaverLoginButton
 import com.ninezero.presentation.component.SNSSurface
 import com.ninezero.presentation.component.SNSTextField
 import com.ninezero.presentation.theme.SNSTheme
@@ -42,6 +48,8 @@ fun LoginScreen(
     onShowSnackbar: (String) -> Unit,
 ) {
     val state = viewModel.collectAsState().value
+    val context = LocalContext.current
+    val activity = context as? Activity
 
     viewModel.collectSideEffect { sideEffect ->
         when (sideEffect) {
@@ -62,7 +70,10 @@ fun LoginScreen(
             onIdChange = viewModel::onIdChange,
             onPasswordChange = viewModel::onPasswordChange,
             onNavigateToSignUp = onNavigateToSignUp,
-            onLoginClick = viewModel::onLogin
+            onLoginClick = viewModel::onLogin,
+            onGoogleLoginClick = viewModel::onGoogleLogin,
+            onNaverLoginClick = { activity?.let { viewModel.onNaverLogin(it) } },
+            onKakaoLoginClick = viewModel::onKakaoLogin
         )
     }
 }
@@ -77,6 +88,9 @@ private fun LoginContent(
     onPasswordChange: (String) -> Unit,
     onNavigateToSignUp: () -> Unit,
     onLoginClick: () -> Unit,
+    onGoogleLoginClick: () -> Unit,
+    onNaverLoginClick: () -> Unit,
+    onKakaoLoginClick: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -170,6 +184,56 @@ private fun LoginContent(
                                 .padding(4.dp)
                         )
                     }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = "또는",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        GoogleLoginButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                onGoogleLoginClick()
+                            }
+                        )
+
+                        NaverLoginButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                onNaverLoginClick()
+                            }
+                        )
+
+                        KakaoLoginButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                onKakaoLoginClick()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -189,6 +253,9 @@ fun LoginScreenPreview() {
             onIdChange = {},
             onPasswordChange = {},
             onLoginClick = {},
+            onGoogleLoginClick = {},
+            onNaverLoginClick = {},
+            onKakaoLoginClick = {},
             onNavigateToSignUp = {}
         )
     }

@@ -16,8 +16,6 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import com.mohamedrejeb.richeditor.model.RichTextState
-import com.ninezero.domain.model.Post
 import com.ninezero.presentation.component.LeftAlignedDetailScaffold
 import kotlinx.coroutines.launch
 import org.orbitmvi.orbit.compose.collectAsState
@@ -33,7 +31,7 @@ import com.ninezero.presentation.component.PostCard
 import com.ninezero.presentation.component.bottomsheet.CommentsBottomSheet
 import com.ninezero.presentation.component.bottomsheet.EditPostBottomSheet
 import com.ninezero.presentation.component.bottomsheet.OptionsBottomSheet
-import com.ninezero.presentation.model.toModel
+import com.ninezero.presentation.model.PostCardModel
 
 @Composable
 fun PostDetailScreen(
@@ -65,7 +63,7 @@ fun PostDetailScreen(
 
                 if (showComments) {
                     posts[index]?.let { post ->
-                        viewModel.showCommentsSheet(post.toModel())
+                        viewModel.showCommentsSheet(post)
                     }
                 }
             }
@@ -107,40 +105,28 @@ fun PostDetailScreen(
                             ) {
                                 items(
                                     count = posts.itemCount,
-                                    key = posts.itemKey { it.id }
+                                    key = posts.itemKey { it.postId }
                                 ) { index ->
                                     posts[index]?.let { post ->
-                                        val richTextState = RichTextState().apply {
-                                            setHtml(post.content)
-                                        }
-
                                         PostCard(
-                                            postId = post.id,
+                                            postId = post.postId,
                                             userId = post.userId,
                                             username = post.userName,
                                             profileImageUrl = post.profileImageUrl,
                                             images = post.images,
-                                            richTextState = richTextState,
+                                            richTextState = post.richTextState,
                                             isOwner = post.userId == state.myUserId,
-                                            commentCount = state.commentCount[post.id] ?: post.commentCount,
-                                            likesCount = state.likesCount[post.id] ?: post.likesCount,
-                                            isLiked = state.isLiked[post.id] ?: post.isLiked,
+                                            commentCount = state.commentCount[post.postId] ?: post.commentCount,
+                                            likesCount = state.likesCount[post.postId] ?: post.likesCount,
+                                            isLiked = state.isLiked[post.postId] ?: post.isLiked,
                                             isFollowing = state.isFollowing[post.userId] ?: post.isFollowing,
-                                            isSaved = state.isSaved[post.id] ?: post.isSaved,
+                                            isSaved = state.isSaved[post.postId] ?: post.isSaved,
                                             createdAt = post.createdAt,
-                                            onOptionClick = { viewModel.showOptionsSheet(post.toModel()) },
-                                            onCommentClick = {
-                                                viewModel.showCommentsSheet(post.toModel())
-                                            },
-                                            onLikeClick = {
-                                                viewModel.handleLikeClick(post.id, post.toModel())
-                                            },
-                                            onFollowClick = {
-                                                viewModel.handleFollowClick(post.userId, post.toModel())
-                                            },
-                                            onSavedClick = {
-                                                viewModel.handleSavedClick(post.id, post.toModel())
-                                            },
+                                            onOptionClick = { viewModel.showOptionsSheet(post) },
+                                            onCommentClick = { viewModel.showCommentsSheet(post) },
+                                            onLikeClick = { viewModel.handleLikeClick(post.postId, post) },
+                                            onFollowClick = { viewModel.handleFollowClick(post.userId, post) },
+                                            onSavedClick = { viewModel.handleSavedClick(post.postId, post) },
                                             onNavigateToProfile = {
                                                 if (post.userId == state.myUserId) {
                                                     onNavigateBack
@@ -259,7 +245,7 @@ fun PostDetailScreen(
     }
 }
 
-private fun findPostIndex(posts: LazyPagingItems<Post>, postId: Long): Int {
+private fun findPostIndex(posts: LazyPagingItems<PostCardModel>, postId: Long): Int {
     val items = posts.itemSnapshotList.items
-    return items.indexOfFirst { it.id == postId }.takeIf { it >= 0 } ?: 0
+    return items.indexOfFirst { it.postId == postId }.takeIf { it >= 0 } ?: 0
 }

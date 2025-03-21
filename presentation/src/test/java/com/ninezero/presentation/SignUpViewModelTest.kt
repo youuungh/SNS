@@ -1,7 +1,7 @@
 package com.ninezero.presentation
 
 import com.ninezero.domain.model.ApiResult
-import com.ninezero.domain.usecase.UserUseCase
+import com.ninezero.domain.usecase.AuthUseCase
 import com.ninezero.presentation.auth.signup.SignUpSideEffect
 import com.ninezero.presentation.auth.signup.SignUpViewModel
 import kotlinx.coroutines.flow.first
@@ -14,7 +14,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class SignUpViewModelTest {
-    private lateinit var userUseCase: UserUseCase
+    private lateinit var authUseCase: AuthUseCase
     private lateinit var viewModel: SignUpViewModel
 
     private val testId = "test"
@@ -23,8 +23,8 @@ class SignUpViewModelTest {
 
     @Before
     fun setup() {
-        userUseCase = mock()
-        viewModel = SignUpViewModel(userUseCase)
+        authUseCase = mock()
+        viewModel = SignUpViewModel(authUseCase)
     }
 
     @Test
@@ -74,8 +74,8 @@ class SignUpViewModelTest {
 
     @Test
     fun `회원가입 성공 시 네비게이션 및 스낵바 테스트`() = runTest {
-        // Given: UserUseCase mock 설정
-        whenever(userUseCase.signUp(testId, testUsername, testPassword))
+        // Given: AuthUseCase mock 설정
+        whenever(authUseCase.signUp(testId, testUsername, testPassword))
             .thenReturn(ApiResult.Success(true))
 
         // When: 회원가입 시도
@@ -100,9 +100,9 @@ class SignUpViewModelTest {
 
     @Test
     fun `회원가입 실패 시 에러 메시지 테스트`() = runTest {
-        // Given: UserUseCase mock 설정
+        // Given: AuthUseCase mock 설정
         val errorMessage = "회원가입 실패"
-        whenever(userUseCase.signUp(testId, testUsername, testPassword))
+        whenever(authUseCase.signUp(testId, testUsername, testPassword))
             .thenReturn(ApiResult.Error.InvalidRequest(errorMessage))
 
         // When: 회원가입 시도

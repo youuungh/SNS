@@ -76,7 +76,7 @@ fun LoadingDialog(
 }
 
 @Composable
-fun SNSDialog(
+fun SignOutDialog(
     openDialog: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
@@ -589,7 +589,7 @@ private fun DeleteCommentDialogPreview() {
 @Composable
 private fun SNSDialogPreview() {
     SNSTheme {
-        SNSDialog(
+        SignOutDialog(
             openDialog = true,
             onDismiss = {},
             onConfirm = {}

@@ -35,7 +35,7 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 @Composable
 fun FeedScreen(
     snackbarHostState: SnackbarHostState,
-    viewModel: FeedViewModel = hiltViewModel(),
+    viewModel: FeedViewModel,
     onNavigateToLogin: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToUser: (Long) -> Unit
@@ -48,6 +48,12 @@ fun FeedScreen(
     var isInit by remember { mutableStateOf(true) }
     var showFab by remember { mutableStateOf(false) }
     var lastScrollTime by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(Unit) {
+        viewModel.scrollToTop.collect {
+            listState.animateScrollToItem(0)
+        }
+    }
 
     LaunchedEffect(posts.loadState.refresh) {
         if (posts.loadState.refresh is LoadState.NotLoading) {

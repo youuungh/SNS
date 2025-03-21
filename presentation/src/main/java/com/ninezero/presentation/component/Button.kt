@@ -4,8 +4,11 @@ import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +26,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ninezero.presentation.theme.LocalTheme
 import com.ninezero.presentation.theme.SNSTheme
@@ -36,6 +40,8 @@ import com.ninezero.presentation.theme.snsSmallButtonLightBackground
 import com.ninezero.presentation.theme.snsSmallButtonLightText
 import com.ninezero.presentation.R
 import com.ninezero.presentation.theme.snsFollowDefault
+import com.ninezero.presentation.theme.snsKakao
+import com.ninezero.presentation.theme.snsNaver
 import com.ninezero.presentation.theme.snsSaveButtonDarkBackground
 import com.ninezero.presentation.theme.snsSaveButtonDarkText
 import com.ninezero.presentation.theme.snsSaveButtonLightBackground
@@ -418,25 +424,32 @@ fun AdditionalButton(
     text: String,
     onClick: () -> Unit,
     isEnabled: Boolean = false,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ),
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Surface(
+        onClick = { if (enabled) onClick() },
+        enabled = enabled,
         shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp),
+        color = Color.Transparent,
+        contentColor = if (enabled)
+            MaterialTheme.colorScheme.onSurface
+        else
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        interactionSource = interactionSource,
         modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
-            .bounceClick()
+            .let { if (enabled) it.bounceClick() else it }
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
         ) {
             Text(
                 text = text,
@@ -447,8 +460,14 @@ fun AdditionalButton(
                 onCheckedChange = null,
                 enabled = false,
                 colors = SwitchDefaults.colors(
-                    disabledCheckedThumbColor = MaterialTheme.colorScheme.primary,
-                    disabledCheckedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    disabledCheckedThumbColor = if (enabled)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    disabledCheckedTrackColor = if (enabled)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                     disabledUncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     disabledUncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -765,6 +784,106 @@ fun SNSDefaultFollowingButton(
     }
 }
 
+@Composable
+fun SNSSocialButton(
+    onClick: () -> Unit,
+    @DrawableRes drawableId: Int,
+    backgroundColor: Color,
+    contentColor: Color = Color.Unspecified,
+    hasBorder: Boolean = false,
+    borderColor: Color = Color.Transparent,
+    iconSize: Dp = 36.dp,
+    iconPadding: Dp = 12.dp,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor
+        ),
+        shape = CircleShape,
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp
+        ),
+        contentPadding = PaddingValues(0.dp),
+        modifier = modifier
+            .bounceClick()
+            .size(48.dp)
+            .then(
+                if (hasBorder) Modifier.border(
+                    width = 1.dp,
+                    color = borderColor,
+                    shape = CircleShape
+                ) else Modifier
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(iconPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = drawableId),
+                contentDescription = null,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+@Composable
+fun GoogleLoginButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = Color.White
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+
+    SNSSocialButton(
+        onClick = onClick,
+        drawableId = R.drawable.ic_google,
+        backgroundColor = backgroundColor,
+        hasBorder = true,
+        borderColor = borderColor,
+        iconPadding = 14.dp,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun NaverLoginButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SNSSocialButton(
+        onClick = onClick,
+        drawableId = R.drawable.ic_naver,
+        backgroundColor = snsNaver,
+        contentColor = Color.White,
+        iconSize = 16.dp,
+        iconPadding = 14.dp,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun KakaoLoginButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SNSSocialButton(
+        onClick = onClick,
+        drawableId = R.drawable.ic_kakao,
+        backgroundColor = snsKakao,
+        contentColor = Color.Black,
+        iconSize = 20.dp,
+        modifier = modifier
+    )
+}
+
 @Preview(showBackground = true)
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
@@ -815,6 +934,24 @@ fun PostButtonsPreview() {
                         onClick = {}
                     )
                 }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Composable
+fun SocialButtonsPreview() {
+    SNSTheme {
+        Surface {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                GoogleLoginButton(onClick = {})
+                NaverLoginButton(onClick = {})
+                KakaoLoginButton(onClick = {})
             }
         }
     }

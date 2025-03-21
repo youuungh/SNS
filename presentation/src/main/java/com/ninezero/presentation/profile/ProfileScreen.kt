@@ -244,7 +244,7 @@ fun ProfileScreen(
                                                             SavedPostItems(
                                                                 savedPosts = savedPosts,
                                                                 minGridHeight = minGridHeight,
-                                                                onPostClick = { postId -> onNavigateToPostDetail(state.myUserId, postId) }
+                                                                onPostClick = { userId, postId -> onNavigateToPostDetail(userId, postId) }
                                                             )
                                                         }
                                                     }
@@ -362,7 +362,15 @@ private fun SuggestedUsersSection(
     onFollowClick: (Long, UserCardModel) -> Unit,
     onNavigateToUser: (Long) -> Unit
 ) {
-    if (suggestedUsers.itemCount > 0) {
+    val randomUsersList = remember(suggestedUsers.loadState.refresh) {
+        val list = mutableListOf<UserCardModel>()
+        for (i in 0 until suggestedUsers.itemCount) {
+            suggestedUsers[i]?.let { list.add(it) }
+        }
+        list.shuffled().take(5)
+    }
+
+    if (randomUsersList.isNotEmpty()) {
         ItemSection(
             title = stringResource(R.string.suggested_users),
             onShowAllClick = { /* 모두 보기 */ }
@@ -372,20 +380,20 @@ private fun SuggestedUsersSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(
-                    count = minOf(5, suggestedUsers.itemCount),
-                    key = suggestedUsers.itemKey { it.userId }
+                    count = randomUsersList.size,
+                    key = { index -> randomUsersList[index].userId }
                 ) { index ->
-                    suggestedUsers[index]?.let { user ->
-                        key(user.userId) {
-                            UserCard(
-                                userId = user.userId,
-                                username = user.userName,
-                                profileImagePath = user.profileImagePath,
-                                isFollowing = isFollowing[user.userId] ?: user.isFollowing,
-                                onFollowClick = { onFollowClick(user.userId, user) },
-                                onUserClick = { onNavigateToUser(user.userId) }
-                            )
-                        }
+                    val user = randomUsersList[index]
+
+                    key(user.userId) {
+                        UserCard(
+                            userId = user.userId,
+                            username = user.userName,
+                            profileImagePath = user.profileImagePath,
+                            isFollowing = isFollowing[user.userId] ?: user.isFollowing,
+                            onFollowClick = { onFollowClick(user.userId, user) },
+                            onUserClick = { onNavigateToUser(user.userId) }
+                        )
                     }
                 }
             }
@@ -400,7 +408,9 @@ private fun MyPostItems(
     onPostClick: (Long) -> Unit
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val gridHeight = calculateGridHeight(myPosts.itemCount, screenHeight)
+    val gridHeight = remember(myPosts.itemCount) {
+        calculateGridHeight(myPosts.itemCount, screenHeight)
+    }
 
     LazyVerticalGrid(
         modifier = Modifier
@@ -472,10 +482,12 @@ private fun MyPostItems(
 private fun SavedPostItems(
     savedPosts: LazyPagingItems<Post>,
     minGridHeight: Dp,
-    onPostClick: (Long) -> Unit
+    onPostClick: (Long, Long) -> Unit
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val gridHeight = calculateGridHeight(savedPosts.itemCount, screenHeight)
+    val gridHeight = remember(savedPosts.itemCount) {
+        calculateGridHeight(savedPosts.itemCount, screenHeight)
+    }
 
     LazyVerticalGrid(
         modifier = Modifier
@@ -495,7 +507,7 @@ private fun SavedPostItems(
                         modifier = Modifier
                             .fillMaxWidth()
                             .bounceClick()
-                            .clickable { onPostClick(post.id) }
+                            .clickable { onPostClick(post.userId, post.id) }
                     ) {
                         key(post.images.first()) {
                             AsyncImage(

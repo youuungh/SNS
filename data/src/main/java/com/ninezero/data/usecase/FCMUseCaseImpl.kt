@@ -6,16 +6,17 @@ import com.ninezero.data.model.dto.DeviceTokenRequest
 import com.ninezero.data.util.handleNetworkException
 import com.ninezero.domain.model.ApiResult
 import com.ninezero.domain.repository.NetworkRepository
-import com.ninezero.domain.usecase.FCMTokenUseCase
+import com.ninezero.domain.usecase.FCMUseCase
+import com.ninezero.domain.usecase.NotificationType
+import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import javax.inject.Inject
 
-class FCMTokenUseCaseImpl @Inject constructor(
+class FCMUseCaseImpl @Inject constructor(
     private val notificationService: NotificationService,
     private val userDataStore: UserDataStore,
     private val networkRepository: NetworkRepository
-) : FCMTokenUseCase {
-
+) : FCMUseCase {
     override suspend fun registerToken(token: String): ApiResult<Long> {
         return try {
             if (!networkRepository.isNetworkAvailable()) {
@@ -57,6 +58,22 @@ class FCMTokenUseCaseImpl @Inject constructor(
             Timber.e(e, "FCM 토큰 등록 해제 오류")
             e.handleNetworkException()
         }
+    }
+
+    override suspend fun setNotificationsEnabled(enabled: Boolean) {
+        userDataStore.setNotificationsEnabled(enabled)
+    }
+
+    override fun getNotificationsEnabled(): Flow<Boolean> {
+        return userDataStore.getNotificationsEnabled()
+    }
+
+    override suspend fun setNotificationType(type: NotificationType, enabled: Boolean) {
+        userDataStore.setNotificationType(type, enabled)
+    }
+
+    override fun getNotificationType(type: NotificationType): Flow<Boolean> {
+        return userDataStore.getNotificationType(type)
     }
 
     override suspend fun getCurrentToken(): String? {

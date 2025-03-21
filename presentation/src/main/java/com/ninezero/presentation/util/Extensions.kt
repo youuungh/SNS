@@ -14,6 +14,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import com.ninezero.presentation.R
+import timber.log.Timber
+import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -22,12 +24,26 @@ private val ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")
 private val MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("MM월 dd일")
 
+private val dateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+private val dateCache = mutableMapOf<String, LocalDate?>()
+
 // Date Time Utils
 private fun parseChatDateTime(dateTime: String): LocalDateTime? {
     return try {
         LocalDateTime.parse(dateTime, ISO_FORMATTER)
     } catch (e: Exception) {
         null
+    }
+}
+
+fun parseMessageDate(dateStr: String): LocalDate? {
+    return dateCache.getOrPut(dateStr) {
+        try {
+            LocalDateTime.parse(dateStr, dateTimeFormatter).toLocalDate()
+        } catch (e: Exception) {
+            Timber.e(e, "날짜 파싱 실패: $dateStr")
+            null
+        }
     }
 }
 

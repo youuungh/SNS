@@ -52,7 +52,7 @@ fun PullToRefreshLayout(
                     )
                 ) { value, _ -> offsetY = value }
             }
-            !refreshing && isRefreshTriggered -> {
+            !refreshing -> {
                 // Refresh 완료시 원위치로 부드럽게 애니메이션
                 delay(300)
                 animate(

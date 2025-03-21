@@ -117,7 +117,7 @@ class ProfileViewModel @Inject constructor(
     private fun loadMyPosts() = intent {
         when (val result = feedUseCase.getMyPosts()) {
             is ApiResult.Success -> {
-                val myPosts = result.data.cachedIn(viewModelScope)
+                val myPosts = result.data
                 reduce { state.copy(myPosts = myPosts) }
             }
             is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(result.message))
@@ -127,7 +127,7 @@ class ProfileViewModel @Inject constructor(
     fun loadSavedPosts() = intent {
         when (val result = feedUseCase.getSavedPosts()) {
             is ApiResult.Success -> {
-                val savedPosts = result.data.cachedIn(viewModelScope)
+                val savedPosts = result.data
                 reduce {
                     state.copy(
                         savedPosts = savedPosts,
@@ -165,6 +165,14 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun showEditUsernameDialog() = intent {
+        reduce { state.copy(dialog = ProfileDialog.EditUsername(state.username)) }
+    }
+
+    fun hideDialog() = intent {
+        reduce { state.copy(dialog = ProfileDialog.Hidden) }
+    }
+
     fun handleFollowClick(userId: Long, user: UserCardModel) = intent {
         val isFollowing = state.isFollowing[userId] ?: user.isFollowing
 
@@ -194,14 +202,6 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
-
-    fun showEditUsernameDialog() = intent {
-        reduce { state.copy(dialog = ProfileDialog.EditUsername(state.username)) }
-    }
-
-    fun hideDialog() = intent {
-        reduce { state.copy(dialog = ProfileDialog.Hidden) }
-    }
 }
 
 @Immutable
@@ -214,7 +214,7 @@ data class ProfileState(
     val followingCount: Int = 0,
     val isFollowing: Map<Long, Boolean> = emptyMap(),
     val isSaved: Map<Long, Boolean> = emptyMap(),
-    val suggestedUsers: Flow<PagingData<UserCardModel>> = emptyFlow<PagingData<UserCardModel>>(),
+    val suggestedUsers: Flow<PagingData<UserCardModel>> = emptyFlow(),
     val myPosts: Flow<PagingData<Post>> = emptyFlow<PagingData<Post>>(),
     val savedPosts: Flow<PagingData<Post>> = emptyFlow<PagingData<Post>>(),
     val isLoading: Boolean = true,

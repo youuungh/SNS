@@ -1,5 +1,8 @@
 package com.ninezero.domain.model.chat
 
+import androidx.compose.runtime.Stable
+
+@Stable
 data class ChatRoomParticipant(
     val userId: Long,
     val userLoginId: String,

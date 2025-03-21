@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,14 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
 }
+
+fun File.loadProperties(): Properties = Properties().apply {
+    if (exists()) {
+        inputStream().use { load(it) }
+    }
+}
+
+val localProperties = rootProject.file("local.properties").loadProperties()
 
 android {
     namespace = "com.ninezero.sns"
@@ -20,8 +30,17 @@ android {
 
         testInstrumentationRunner = "com.ninezero.sns.CustomTestRunner"
             //"androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.getProperty("naver.client.id")}\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.getProperty("naver.client.secret")}\"")
+        buildConfigField("String", "KAKAO_NATIVE_KEY", "\"${localProperties.getProperty("kakao.native.key")}\"")
+
+        manifestPlaceholders["kakaoScheme"] = "kakao${localProperties.getProperty("kakao.native.key")}"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -52,9 +71,19 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth.ktx)
+
+    // Authentication
+    implementation(libs.play.services.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.oauth)
+    implementation(libs.v2.user)
 
     // Hilt
     implementation(libs.hilt.android)
+
     ksp(libs.hilt.compiler)
 
     // Work
