@@ -39,7 +39,8 @@ private fun parseChatDateTime(dateTime: String): LocalDateTime? {
 fun parseMessageDate(dateStr: String): LocalDate? {
     return dateCache.getOrPut(dateStr) {
         try {
-            LocalDateTime.parse(dateStr, dateTimeFormatter).toLocalDate()
+            val datePart = dateStr.split("T").firstOrNull() ?: return@getOrPut null
+            LocalDate.parse(datePart)
         } catch (e: Exception) {
             Timber.e(e, "날짜 파싱 실패: $dateStr")
             null

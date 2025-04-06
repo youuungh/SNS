@@ -59,10 +59,9 @@ fun ChatScreen(
 
     val markedAsReadMessageIds = remember { mutableSetOf<String>() }
 
-    val groupedMessages by remember {
+    val groupedMessages by remember(state.messages) {
         derivedStateOf {
             state.messages
-                .asSequence()
                 .groupBy { message -> parseMessageDate(message.createdAt) }
                 .filterKeys { it != null }
                 .mapKeys { (_, values) -> values.first().createdAt }

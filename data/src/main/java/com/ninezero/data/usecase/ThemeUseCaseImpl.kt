@@ -14,6 +14,6 @@ class ThemeUseCaseImpl @Inject constructor(
     }
 
     override fun getTheme(): Flow<Boolean> {
-        return userDataStore.getDarkMode().map { it == true }
+        return userDataStore.getDarkMode().map { it }
     }
 }

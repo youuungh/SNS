@@ -260,7 +260,7 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             } else {
-                delay(100)
+                delay(300)
                 loadInitialMessages(currentRoomId!!)
             }
         } catch (e: Exception) {
