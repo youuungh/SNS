@@ -5,10 +5,9 @@
 ![Architecture](https://img.shields.io/badge/Architecture-Clean-green)
 ![Ktor](https://img.shields.io/badge/Backend-Ktor-red)
 
-
-**SNS는 클린 아키텍처와 최신 Android 기술을 활용한 소셜 네트워킹 앱입니다. 사용자는 게시물을 작성하고, 댓글을 달고, 다른 사용자를 팔로우하며, 실시간 채팅을 할 수
-있습니다. Jetpack Compose, Kotlin Coroutines, Hilt 등 최신 안드로이드 개발 기술을 활용하였습니다.**
-
+SNS는 클린 아키텍처와 최신 Android 기술을 활용한 소셜 네트워킹 앱입니다. 사용자는 게시물을 작성하고, 댓글을 달고, 다른 사용자를 팔로우하며, 실시간 채팅을 할 수
+있습니다. Jetpack Compose, Kotlin Coroutines, Hilt 등 최신 안드로이드 개발 기술을 활용하였습니다.
+   
 ## 프리뷰
 
 <a href="https://streamable.com/m9ybby">
@@ -141,7 +140,7 @@ com.ninezero.sns
     <td><img src="https://github.com/user-attachments/assets/42c7a4de-99e5-4696-a41f-63baa6420f21" height="20%" /></td>
     <td><img src="https://github.com/user-attachments/assets/1529a81d-c688-4e5b-8729-de7340706437" height="20%" /></td>
     <td><img src="https://github.com/user-attachments/assets/83644a73-0697-4bd9-8333-84e4bc61ddc3" height="20%" /></td>
-    <td><img src="(https://github.com/user-attachments/assets/0ae867b8-747f-4c1b-b9f8-f84b12ddbe2d" height="20%" /></td>
+    <td><img src="https://github.com/user-attachments/assets/0ae867b8-747f-4c1b-b9f8-f84b12ddbe2d" height="20%" /></td>
   </tr>
   <tr>
     <td><img src="https://github.com/user-attachments/assets/8cbb91b4-a40c-499d-978a-fc080c7480ad" height="20%" /></td>
