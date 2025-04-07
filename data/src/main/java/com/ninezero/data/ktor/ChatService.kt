@@ -36,7 +36,7 @@ class ChatService @Inject constructor(
         onClose: suspend (cause: Throwable?) -> Unit
     ) {
         try {
-            client.webSocket("chat/ws") {
+            client.webSocket("wss://ninezero-sns-api.onrender.com/api/chat/ws") {
                 webSocketSession = this
                 try {
                     send(Frame.Text(Json.encodeToString(session)))

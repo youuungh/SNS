@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,8 +62,6 @@ fun PostImageScreen(
 ) {
     val state = viewModel.collectAsState().value
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val minGridHeight = screenHeight - ((APP_BAR_HEIGHT + STICKY_SMALL_HEADER_HEIGHT).dp)
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
 
@@ -142,79 +141,76 @@ fun PostImageScreen(
                         }
                     }
 
-                    item {
-                        val gridHeight = remember(state.images.size, screenWidth) {
-                            calculateGridHeight(state.images.size, screenWidth)
-                        }
+                    val columns = (screenWidth.value / (CELL_SIZE + GRID_SPACING)).toInt().coerceAtLeast(2)
+                    val itemRows = state.images.chunked(columns)
 
-                        LazyVerticalGrid(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = minGridHeight, max = gridHeight + minGridHeight)
-                                .navigationBarsPadding(),
-                            columns = GridCells.Adaptive(CELL_SIZE.dp),
-                            horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp),
-                            verticalArrangement = Arrangement.spacedBy(GRID_SPACING.dp)
-                        ) {
-                            items(
-                                count = state.images.size,
-                                key = { state.images[it].uri }
+                    itemRows.forEach { rowItems ->
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = GRID_SPACING.dp / 2),
+                                horizontalArrangement = Arrangement.spacedBy(GRID_SPACING.dp)
                             ) {
-                                val image = state.images[it]
-                                val isSelected = state.selectedImages.contains(image)
-
-                                Box(
-                                    modifier = Modifier
-                                        .bounceClick {
-                                            if (isMultiSelectMode) {
-                                                viewModel.onMultiImageSelect(image)
-                                            } else {
-                                                viewModel.onSingleImageSelect(image)
-                                            }
-                                        }
-                                ) {
-                                    androidx.compose.foundation.Image(
+                                rowItems.forEach { image ->
+                                    val isSelected = state.selectedImages.contains(image)
+                                    Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f),
-                                        painter = rememberAsyncImagePainter(model = image.uri),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop
-                                    )
-
-                                    if (isSelected) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .background(Color.Black.copy(alpha = 0.2f))
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .bounceClick {
+                                                if (isMultiSelectMode) {
+                                                    viewModel.onMultiImageSelect(image)
+                                                } else {
+                                                    viewModel.onSingleImageSelect(image)
+                                                }
+                                            }
+                                    ) {
+                                        androidx.compose.foundation.Image(
+                                            modifier = Modifier.fillMaxSize(),
+                                            painter = rememberAsyncImagePainter(model = image.uri),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop
                                         )
 
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(8.dp)
-                                                .size(24.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                                                .padding(1.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
+                                        if (isSelected) {
                                             Box(
                                                 modifier = Modifier
-                                                    .fillMaxSize()
+                                                    .matchParentSize()
+                                                    .background(Color.Black.copy(alpha = 0.2f))
+                                            )
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(8.dp)
+                                                    .size(24.dp)
                                                     .clip(CircleShape)
-                                                    .background(Color.White),
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                                    .padding(1.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Check,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(CircleShape)
+                                                        .background(Color.White),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Check,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
+                                }
+
+                                repeat(columns - rowItems.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
                         }

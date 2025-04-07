@@ -29,7 +29,7 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 import javax.inject.Singleton
 
-const val BASE_URL = "http://10.0.2.2:8080/"
+const val BASE_URL = "https://ninezero-sns-api.onrender.com/"
 
 /** retrofit
 @Provides
