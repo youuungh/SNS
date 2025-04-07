@@ -16,6 +16,13 @@ SNS는 클린 아키텍처와 최신 Android 기술을 활용한 소셜 네트�
 
 ## 다운로드
 
+<div align="center">
+  <a href="https://github.com/youuungh/SNS/releases/tag/v1.0.0">
+    <img src="https://img.shields.io/badge/SNS_v1.0.0-다운로드-2ea44f?style=for-the-badge&logo=android" alt="APK 다운로드" width="250px"/>
+  </a>
+  <p><strong>호스팅 서버를 이용한 실시간 기능이 포함된 APK 앱</strong></p>
+</div>
+
 ## 주요 기능
 
 ### 인증 시스템
