@@ -60,9 +60,20 @@ class PostViewModel @Inject constructor(
         }
     }
 
-    fun onMultiSelectDisabled() = intent {
-        reduce {
-            state.copy(selectedImages = state.selectedImages.firstOrNull()?.let { listOf(it) } ?: emptyList())
+    fun toggleMultiSelectMode() = intent {
+        val isMultiSelectEnabled = !state.isMultiSelectMode
+
+        if (!isMultiSelectEnabled && state.selectedImages.size > 1) {
+            reduce {
+                state.copy(
+                    isMultiSelectMode = isMultiSelectEnabled,
+                    selectedImages = state.selectedImages.firstOrNull()?.let { listOf(it) } ?: emptyList()
+                )
+            }
+        } else {
+            reduce {
+                state.copy(isMultiSelectMode = isMultiSelectEnabled)
+            }
         }
     }
 
@@ -94,6 +105,7 @@ data class PostState(
     val richTextState: RichTextState = RichTextState(),
     val selectedImages: List<Image> = emptyList(),
     val images: List<Image> = emptyList(),
+    val isMultiSelectMode: Boolean = false,
     val isLoading: Boolean = false
 )
 

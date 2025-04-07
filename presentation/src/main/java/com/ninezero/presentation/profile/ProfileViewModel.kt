@@ -83,8 +83,6 @@ class ProfileViewModel @Inject constructor(
                                                 !(state.isFollowing[user.userId] ?: user.isFollowing)
                                             }
                                     }
-                                    .cachedIn(viewModelScope)
-
                                 reduce { state.copy(suggestedUsers = suggestedUsers) }
                             }
                             is ApiResult.Error -> postSideEffect(ProfileSideEffect.ShowSnackbar(userResult.message))

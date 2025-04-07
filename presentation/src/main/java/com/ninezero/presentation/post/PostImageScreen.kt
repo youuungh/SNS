@@ -10,13 +10,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,10 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,11 +41,8 @@ import com.ninezero.presentation.component.SNSSmallText
 import com.ninezero.presentation.component.SNSSurface
 import com.ninezero.presentation.component.SNSTextButton
 import com.ninezero.presentation.component.bounceClick
-import com.ninezero.presentation.util.Constants.APP_BAR_HEIGHT
 import com.ninezero.presentation.util.Constants.CELL_SIZE
 import com.ninezero.presentation.util.Constants.GRID_SPACING
-import com.ninezero.presentation.util.Constants.STICKY_SMALL_HEADER_HEIGHT
-import com.ninezero.presentation.util.calculateGridHeight
 
 @Composable
 fun PostImageScreen(
@@ -62,8 +52,6 @@ fun PostImageScreen(
 ) {
     val state = viewModel.collectAsState().value
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-
-    var isMultiSelectMode by remember { mutableStateOf(false) }
 
     DetailScaffold(
         titleRes = R.string.new_post,
@@ -120,21 +108,16 @@ fun PostImageScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    SNSSmallText(text = if (isMultiSelectMode) {
+                                    SNSSmallText(text = if (state.isMultiSelectMode) {
                                         stringResource(R.string.multi_select)
                                     } else {
                                         stringResource(R.string.single_select)
                                     })
 
                                     SNSIconToggleButton(
-                                        onClick = {
-                                            isMultiSelectMode = !isMultiSelectMode
-                                            if (!isMultiSelectMode) {
-                                                viewModel.onMultiSelectDisabled()
-                                            }
-                                        },
+                                        onClick = { viewModel.toggleMultiSelectMode() },
                                         icon = painterResource(id = R.drawable.ic_multiple),
-                                        isActive = isMultiSelectMode
+                                        isActive = state.isMultiSelectMode
                                     )
                                 }
                             }
@@ -159,7 +142,7 @@ fun PostImageScreen(
                                             .weight(1f)
                                             .aspectRatio(1f)
                                             .bounceClick {
-                                                if (isMultiSelectMode) {
+                                                if (state.isMultiSelectMode) {
                                                     viewModel.onMultiImageSelect(image)
                                                 } else {
                                                     viewModel.onSingleImageSelect(image)
@@ -214,6 +197,10 @@ fun PostImageScreen(
                                 }
                             }
                         }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.navigationBarsPadding())
                     }
                 }
             }
