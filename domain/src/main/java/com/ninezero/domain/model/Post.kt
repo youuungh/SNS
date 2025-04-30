@@ -1,8 +1,5 @@
 package com.ninezero.domain.model
 
-import androidx.compose.runtime.Stable
-
-@Stable
 data class Post(
     val userId: Long,
     val id: Long,
